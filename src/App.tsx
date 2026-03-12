@@ -85,22 +85,27 @@ export default function App() {
 
   const [currentLocation, setCurrentLocation] = useState('迷霧森林');
 
+  // ─── API Key ──────────────────────────────────────────────────────────────────
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(
+    () => localStorage.getItem('gemini_api_key') || ''
+  );
+
   // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
   const [memories, setMemories] = useState<any[]>([]);
   const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
   const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
 
   const [profile, setProfile] = useState({
-    name: '',
-    job: '',
-    appearance: '',
-    personality: '',
-    other: '',
-    hp: 100,
+    name: '亞瑟',
+    job: '劍士',
+    appearance: '黑髮黑眼，身穿舊皮甲，背著一把鐵劍。',
+    personality: '冷靜、謹慎，對陌生人抱有戒心。',
+    other: '正在尋找失散的妹妹。',
+    hp: 50,
     maxHp: 100,
     mp: 50,
     maxMp: 50,
-    gold: 0
+    gold: 1250
   });
 
   const [systemPrompt, setSystemPrompt] = useState({
@@ -850,9 +855,9 @@ Writing Style: ${systemPrompt.writingStyle}
 
 ---
 [Player]
-Name: ${profile.name || '未知'} | Job: ${profile.job || '未知'}
-Appearance: ${profile.appearance || '未知'}
-Personality: ${profile.personality || '未知'}
+Name: ${profile.name} | Job: ${profile.job}
+Appearance: ${profile.appearance}
+Personality: ${profile.personality}
 ${profile.other ? `Other: ${profile.other}` : ''}
 
 [Current State]
@@ -940,7 +945,13 @@ Please respond as the DM.`;
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const key = geminiApiKey.trim() || process.env.GEMINI_API_KEY || '';
+      if (!key) {
+        showToast('❌ 請先在系統設定輸入 Gemini API Key');
+        setIsLoading(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey: key });
       const prompt = buildPrompt(inputText);
 
       const response = await ai.models.generateContentStream({
@@ -1246,7 +1257,7 @@ Please respond as the DM.`;
                 {/* Header: Name and Actions */}
                 <div className={`flex items-center space-x-2 mb-1 ${msg.role === 'user' ? 'mr-2 flex-row-reverse space-x-reverse' : 'ml-2'}`}>
                   <span className="text-xs text-stone-500 font-bold">
-                    {msg.role === 'user' ? (profile.name || '玩家') : '異世界'}
+                    {msg.role === 'user' ? profile.name : '異世界'}
                   </span>
                   <div className={`flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition ${activeMenuId === msg.id ? 'opacity-100' : ''}`}>
                     {msg.role !== 'user' && (
@@ -1407,7 +1418,7 @@ Please respond as the DM.`;
                 <div className="flex items-center space-x-4">
                   <span className="flex items-center text-rose-400"><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> HP {profile.hp}/{profile.maxHp}</span>
                   <span className="flex items-center text-blue-400"><Zap className="w-3.5 h-3.5 mr-1.5 fill-current" /> MP {profile.mp}/{profile.maxMp}</span>
-                  <span className="flex items-center text-stone-300"><Shield className="w-3.5 h-3.5 mr-1.5" /> {profile.job || '無職業'}</span>
+                  <span className="flex items-center text-stone-300"><Shield className="w-3.5 h-3.5 mr-1.5" /> {profile.job}</span>
                   <span className="flex items-center text-amber-400"><Coins className="w-3.5 h-3.5 mr-1.5" /> {profile.gold.toLocaleString()} G</span>
                 </div>
               </div>
@@ -2340,6 +2351,37 @@ Please respond as the DM.`;
             </div>
             
             <div className="p-6 space-y-4">
+
+              {/* API Key 輸入 */}
+              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-2">
+                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center gap-2">
+                  <span>🔑</span> Gemini API Key
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={geminiApiKey}
+                    onChange={(e) => {
+                      setGeminiApiKey(e.target.value);
+                      localStorage.setItem('gemini_api_key', e.target.value);
+                    }}
+                    placeholder="貼上你的 API Key..."
+                    className="w-full bg-stone-900/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-stone-200 outline-none focus:border-indigo-500/50 transition pr-16"
+                  />
+                  {geminiApiKey && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-400">
+                      ✓ 已設定
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed">
+                  儲存在本機瀏覽器，不會上傳。取得方式：<br/>
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline transition">aistudio.google.com</a>
+                </p>
+              </div>
+
+              <div className="border-t border-white/5 pt-2" />
+
               <button 
                 onClick={handleExportSave}
                 className="w-full bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 text-stone-200 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
