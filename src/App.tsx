@@ -90,6 +90,11 @@ export default function App() {
     () => localStorage.getItem('gemini_api_key') || ''
   );
 
+  // ─── Context Size ─────────────────────────────────────────────────────────────
+  const [contextSize, setContextSize] = useState<number>(
+    () => parseInt(localStorage.getItem('context_size') || '16')
+  );
+
   // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
   const [memories, setMemories] = useState<any[]>([]);
   const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
@@ -322,13 +327,13 @@ export default function App() {
   };
 
   const handleQuickSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, contextSize };
     localStorage.setItem('rpworld_save', JSON.stringify(saveData));
     showToast('已快速存檔');
   };
 
   const handleExportSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, contextSize };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -359,6 +364,10 @@ export default function App() {
         if (saveData.consumables) setConsumables(saveData.consumables);
         if (saveData.currentLocation) setCurrentLocation(saveData.currentLocation);
         if (saveData.messages) setMessages(saveData.messages);
+        if (saveData.contextSize) {
+          setContextSize(saveData.contextSize);
+          localStorage.setItem('context_size', saveData.contextSize.toString());
+        }
         if (saveData.memories) {
           setMemories(saveData.memories);
         } else {
@@ -2377,6 +2386,38 @@ Please respond as the DM.`;
                 <p className="text-[11px] text-stone-600 leading-relaxed">
                   儲存在本機瀏覽器，不會上傳。取得方式：<br/>
                   <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline transition">aistudio.google.com</a>
+                </p>
+              </div>
+
+              {/* Context Size 選擇 */}
+              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-3">
+                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-2"><span>🧠</span> 記憶體容量 (Context Size)</span>
+                  <span className="text-indigo-400 font-mono">{contextSize}K</span>
+                </label>
+                <div className="px-2">
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="1"
+                    value={contextSize === 16 ? 1 : contextSize === 32 ? 2 : 3}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      const mapped = val === 1 ? 16 : val === 2 ? 32 : 64;
+                      setContextSize(mapped);
+                      localStorage.setItem('context_size', mapped.toString());
+                    }}
+                    className="w-full accent-indigo-500"
+                  />
+                  <div className="flex justify-between text-[10px] text-stone-500 mt-1 font-mono">
+                    <span>16K</span>
+                    <span>32K</span>
+                    <span>64K</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed">
+                  數值越大，AI 能記住的歷史對話越多，但會消耗更多 Token。
                 </p>
               </div>
 

@@ -13,6 +13,10 @@
 
 ## 🔴 高優先
 
+- [ ] **Token 上限設定與滑動視窗**
+  在系統設定 (Settings Modal) 新增一個拉桿 (Slider)，讓玩家自選 Token 上限 (16K, 32K, 64K)。
+  在 `buildPrompt` 組合對話歷史時，根據此上限截斷過舊的對話，實作 Sliding Window 機制。
+
 - [ ] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
   包含五種情境：世界事件 / 區域事件 / 場景狀態改變 / NPC 情報 / 玩家重要事件。
