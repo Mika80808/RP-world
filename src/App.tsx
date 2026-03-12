@@ -85,11 +85,10 @@ export default function App() {
 
   const [currentLocation, setCurrentLocation] = useState('迷霧森林');
 
-  const [worldMemory, setWorldMemory] = useState<string[]>([]);
-
-  const [factionMemory, setFactionMemory] = useState<any[]>([]);
-
-  const [locationMemory, setLocationMemory] = useState<any[]>([]);
+  // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
+  const [memories, setMemories] = useState<any[]>([]);
+  const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
+  const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
 
   const [profile, setProfile] = useState({
     name: '亞瑟',
@@ -236,8 +235,26 @@ export default function App() {
 
   const handleAddDiary = () => {
     const newId = Date.now();
-    setDiaryEntries([{ id: newId, text: '', isActive: true }, ...diaryEntries]);
+    setDiaryEntries([{ id: newId, text: '', isActive: true, keywords: [] }, ...diaryEntries]);
     setEditingDiaryId(newId);
+  };
+
+  const handleDiaryKeywordAdd = (id: number, keyword: string) => {
+    const kw = keyword.trim();
+    if (!kw) return;
+    setDiaryEntries(prev => prev.map(e =>
+      e.id === id
+        ? { ...e, keywords: [...(e.keywords || []).filter((k: string) => k !== kw), kw] }
+        : e
+    ));
+  };
+
+  const handleDiaryKeywordRemove = (id: number, keyword: string) => {
+    setDiaryEntries(prev => prev.map(e =>
+      e.id === id
+        ? { ...e, keywords: (e.keywords || []).filter((k: string) => k !== keyword) }
+        : e
+    ));
   };
 
   const handleDeleteDiary = (id: number) => {
@@ -259,7 +276,7 @@ export default function App() {
 
   const handleAddLorebook = () => {
     const newId = Date.now();
-    setLorebookEntries([{ id: newId, title: '新設定', content: '', category: lorebookFilter, isActive: true }, ...lorebookEntries]);
+    setLorebookEntries([{ id: newId, title: '新設定', content: '', category: lorebookFilter, isActive: true, insertionOrder: 100, selective: false, secondaryKeys: [] }, ...lorebookEntries]);
     setEditingLorebookId(newId);
   };
 
@@ -271,6 +288,20 @@ export default function App() {
   const handleToggleLorebook = (id: number) => {
     setLorebookEntries(lorebookEntries.map(entry => 
       entry.id === id ? { ...entry, isActive: !entry.isActive } : entry
+    ));
+  };
+
+  const handleLorebookKeywordAdd = (id: number, field: 'keywords'|'secondaryKeys', kw: string) => {
+    const k = kw.trim();
+    if (!k) return;
+    setLorebookEntries(prev => prev.map(e =>
+      e.id === id ? { ...e, [field]: [...(e[field] || []).filter((x: string) => x !== k), k] } : e
+    ));
+  };
+
+  const handleLorebookKeywordRemove = (id: number, field: 'keywords'|'secondaryKeys', kw: string) => {
+    setLorebookEntries(prev => prev.map(e =>
+      e.id === id ? { ...e, [field]: (e[field] || []).filter((x: string) => x !== kw) } : e
     ));
   };
 
@@ -286,13 +317,13 @@ export default function App() {
   };
 
   const handleQuickSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, worldMemory, factionMemory, locationMemory };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories };
     localStorage.setItem('rpworld_save', JSON.stringify(saveData));
     showToast('已快速存檔');
   };
 
   const handleExportSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, worldMemory, factionMemory, locationMemory };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -323,9 +354,40 @@ export default function App() {
         if (saveData.consumables) setConsumables(saveData.consumables);
         if (saveData.currentLocation) setCurrentLocation(saveData.currentLocation);
         if (saveData.messages) setMessages(saveData.messages);
-        if (saveData.worldMemory) setWorldMemory(saveData.worldMemory);
-        if (saveData.factionMemory) setFactionMemory(saveData.factionMemory);
-        if (saveData.locationMemory) setLocationMemory(saveData.locationMemory);
+        if (saveData.memories) {
+          setMemories(saveData.memories);
+        } else {
+          // ── 舊存檔自動轉換 ──────────────────────────────────────────────
+          const migrated: any[] = [];
+          const now = '（已匯入）';
+          const defaults = {
+            trigger: { scanDepth: 5, probability: 100, sticky: 0, cooldown: 0 },
+            isActive: true, source: 'manual', createdAt: now
+          };
+          (saveData.worldMemory || []).forEach((text: string) => migrated.push({
+            id: `mig_w_${Date.now()}_${Math.random()}`,
+            type: 'world', importance: 'critical', content: text,
+            tags: { locations: [], npcs: [], factions: [], keywords: [] },
+            ...defaults
+          }));
+          (saveData.factionMemory || []).forEach((f: any) => {
+            (f.memories || []).forEach((text: string) => migrated.push({
+              id: `mig_f_${Date.now()}_${Math.random()}`,
+              type: 'world', importance: 'normal', content: `[${f.name}] ${text}`,
+              tags: { locations: [], npcs: [], factions: [f.name], keywords: [] },
+              ...defaults
+            }));
+          });
+          (saveData.locationMemory || []).forEach((loc: any) => {
+            (loc.memories || []).forEach((text: string) => migrated.push({
+              id: `mig_l_${Date.now()}_${Math.random()}`,
+              type: 'scene', importance: 'normal', content: text,
+              tags: { locations: [loc.name], npcs: [], factions: [], keywords: [] },
+              ...defaults
+            }));
+          });
+          if (migrated.length > 0) setMemories(migrated);
+        }
         showToast('存檔已匯入');
         setIsSettingsModalOpen(false);
       } catch (error) {
@@ -418,6 +480,457 @@ export default function App() {
     showToast(`已將 ${npc.name} 記下並加入設定集`);
   };
 
+  // ─── 前端 COMMANDS 解析器 ────────────────────────────────────────────────────
+  // AI 回應格式：<<COMMANDS>>...<</COMMANDS>> 裡的指令由前端執行，不顯示給玩家
+  //
+  // 支援指令：
+  //   HP:+10 / HP:-15          → 增減 HP（自動 clamp 在 0~maxHp）
+  //   MP:+5  / MP:-10          → 增減 MP（自動 clamp 在 0~maxMp）
+  //   GOLD:+200 / GOLD:-50     → 增減金幣
+  //   AFFINITY:角色名:+10       → 更新 NPC 好感度（自動 clamp 在 -100~100）
+  //   LOCATION:新地點           → 移動玩家位置
+  //   TIME:+1h / TIME:+30m     → 推進遊戲內時間
+  //   ITEM_ADD:道具名:數量:說明  → 新增背包道具
+  //   ITEM_REMOVE:道具名:數量   → 移除背包道具
+  //   MEMORY_ADD:類型:內容:標籤  → 自動新增記憶（類型: world/region/scene/npc）
+
+  const parseAndExecuteCommands = (rawText: string): string => {
+    const commandBlockRegex = /<<COMMANDS>>([\s\S]*?)<<\/COMMANDS>>/gi;
+    let narrative = rawText;
+    let commandsFound = false;
+
+    // 收集所有指令區塊
+    const allCommands: string[] = [];
+    let match;
+    while ((match = commandBlockRegex.exec(rawText)) !== null) {
+      commandsFound = true;
+      const lines = match[1].split('\n').map(l => l.trim()).filter(Boolean);
+      allCommands.push(...lines);
+    }
+
+    // 從顯示文字中移除指令區塊
+    if (commandsFound) {
+      narrative = rawText.replace(/<<COMMANDS>>[\s\S]*?<<\/COMMANDS>>/gi, '').trim();
+    }
+
+    if (allCommands.length === 0) return narrative;
+
+    // 批次執行所有指令（避免多次 setState 競爭）
+    let hpDelta = 0;
+    let mpDelta = 0;
+    let goldDelta = 0;
+    const affinityUpdates: { name: string; delta: number }[] = [];
+    const toastQueue: string[] = [];
+
+    for (const cmd of allCommands) {
+      // HP:+10 or HP:-15
+      const hpMatch = cmd.match(/^HP:([+-]\d+)$/i);
+      if (hpMatch) {
+        hpDelta += parseInt(hpMatch[1]);
+        continue;
+      }
+
+      // MP:+5 or MP:-10
+      const mpMatch = cmd.match(/^MP:([+-]\d+)$/i);
+      if (mpMatch) {
+        mpDelta += parseInt(mpMatch[1]);
+        continue;
+      }
+
+      // GOLD:+200 or GOLD:-50
+      const goldMatch = cmd.match(/^GOLD:([+-]\d+)$/i);
+      if (goldMatch) {
+        goldDelta += parseInt(goldMatch[1]);
+        continue;
+      }
+
+      // AFFINITY:角色名:+10
+      const affinityMatch = cmd.match(/^AFFINITY:(.+):([+-]\d+)$/i);
+      if (affinityMatch) {
+        affinityUpdates.push({ name: affinityMatch[1].trim(), delta: parseInt(affinityMatch[2]) });
+        continue;
+      }
+
+      // LOCATION:新地點
+      const locationMatch = cmd.match(/^LOCATION:(.+)$/i);
+      if (locationMatch) {
+        const newLoc = locationMatch[1].trim();
+        setCurrentLocation(newLoc);
+        toastQueue.push(`📍 移動至 ${newLoc}`);
+        continue;
+      }
+
+      // TIME:+1h or TIME:+30m
+      const timeMatch = cmd.match(/^TIME:\+(\d+)(h|m)$/i);
+      if (timeMatch) {
+        const amount = parseInt(timeMatch[1]);
+        const unit = timeMatch[2].toLowerCase();
+        setTimeState(prev => {
+          const totalMinutes = prev.hour * 60 + prev.minute + (unit === 'h' ? amount * 60 : amount);
+          const newDay = prev.day + Math.floor(totalMinutes / (24 * 60));
+          const remainMinutes = totalMinutes % (24 * 60);
+          return {
+            ...prev,
+            hour: Math.floor(remainMinutes / 60),
+            minute: remainMinutes % 60,
+            day: newDay,
+          };
+        });
+        continue;
+      }
+
+      // ITEM_ADD:道具名:數量:說明
+      const itemAddMatch = cmd.match(/^ITEM_ADD:(.+):(\d+):?(.*)$/i);
+      if (itemAddMatch) {
+        const [, name, qty, desc] = itemAddMatch;
+        setInventory(prev => {
+          const exists = prev.find(i => i.name === name.trim());
+          if (exists) {
+            return prev.map(i => i.name === name.trim() ? { ...i, quantity: i.quantity + parseInt(qty) } : i);
+          }
+          return [...prev, { id: Date.now(), name: name.trim(), quantity: parseInt(qty), description: desc?.trim() || '' }];
+        });
+        toastQueue.push(`🎒 獲得 ${name.trim()} x${qty}`);
+        continue;
+      }
+
+      // ITEM_REMOVE:道具名:數量
+      const itemRemoveMatch = cmd.match(/^ITEM_REMOVE:(.+):(\d+)$/i);
+      if (itemRemoveMatch) {
+        const [, name, qty] = itemRemoveMatch;
+        setInventory(prev =>
+          prev.map(i => i.name === name.trim() ? { ...i, quantity: i.quantity - parseInt(qty) } : i)
+             .filter(i => i.quantity > 0)
+        );
+        continue;
+      }
+
+      // MEMORY_ADD:type:importance:content:locations=x,y:npcs=a:factions=b:keywords=c:sticky=N:expires=date
+      // 簡化格式也支援：MEMORY_ADD:type:content:locationTag
+      const memAddMatch = cmd.match(/^MEMORY_ADD:(world|region|scene|npc):(.+)$/i);
+      if (memAddMatch) {
+        const [, rawType, rest] = memAddMatch;
+        const parts = rest.split(':');
+
+        // 判斷第一個 part 是否為 importance
+        const importancePat = /^(critical|normal|flavor)$/i;
+        let importance = 'normal';
+        let contentStart = 0;
+        if (importancePat.test(parts[0])) {
+          importance = parts[0].toLowerCase();
+          contentStart = 1;
+        }
+
+        // 找到第一個含 = 的 part 作為 options 開始
+        let optStart = parts.findIndex((p, i) => i > contentStart && p.includes('='));
+        if (optStart === -1) optStart = parts.length;
+
+        const contentStr = parts.slice(contentStart, optStart).join(':').trim();
+        const optParts = parts.slice(optStart);
+
+        // 解析 options
+        const getOpt = (key: string) => {
+          const found = optParts.find(p => p.toLowerCase().startsWith(key + '='));
+          return found ? found.split('=')[1] : '';
+        };
+
+        const locations  = getOpt('locations') || getOpt('location')
+          ? (getOpt('locations') || getOpt('location')).split(',').map(s => s.trim()).filter(Boolean)
+          : (rawType === 'scene' || rawType === 'region') ? [currentLocation] : [];
+        const npcs       = getOpt('npcs') || getOpt('npc')
+          ? (getOpt('npcs') || getOpt('npc')).split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+        const factions   = getOpt('factions') || getOpt('faction')
+          ? (getOpt('factions') || getOpt('faction')).split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+        const keywords   = getOpt('keywords') || getOpt('keyword')
+          ? (getOpt('keywords') || getOpt('keyword')).split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+        const sticky     = parseInt(getOpt('sticky') || '0');
+        const expires    = getOpt('expires') || undefined;
+
+        // 若沒有 locations 且是 scene/region，預設用當前地點
+        const finalLocations = locations.length > 0 ? locations
+          : (rawType === 'scene' || rawType === 'region') ? [currentLocation] : [];
+
+        const newMem = {
+          id: `mem_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+          type: rawType.toLowerCase(),
+          importance,
+          content: contentStr,
+          tags: { locations: finalLocations, npcs, factions, keywords },
+          trigger: { scanDepth: 5, probability: 100, sticky, cooldown: 0 },
+          isActive: true,
+          source: 'ai_generated',
+          createdAt: `帝國曆 ${timeState.year}年${timeState.month}月${timeState.day}日`,
+          ...(expires ? { expiresAt: expires } : {}),
+        };
+
+        setMemories(prev => [...prev, newMem]);
+        toastQueue.push(`📝 新增${rawType === 'world' ? '世界' : rawType === 'region' ? '區域' : rawType === 'scene' ? '場景' : 'NPC'}記憶`);
+        continue;
+      }
+    }
+
+    // 批次更新數值
+    if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
+      setProfile(prev => {
+        const newHp = Math.max(0, prev.hp + hpDelta);  // 無上限，升級後可超過初始maxHp
+        const newMp = Math.max(0, prev.mp + mpDelta);  // 無上限
+        const newGold = Math.max(0, prev.gold + goldDelta);
+
+        if (hpDelta !== 0) toastQueue.push(hpDelta > 0 ? `❤️ HP +${hpDelta}` : `💔 HP ${hpDelta}`);
+        if (mpDelta !== 0) toastQueue.push(mpDelta > 0 ? `💙 MP +${mpDelta}` : `💙 MP ${mpDelta}`);
+        if (goldDelta !== 0) toastQueue.push(goldDelta > 0 ? `🪙 +${goldDelta} G` : `🪙 ${goldDelta} G`);
+
+        // 死亡判定
+        if (newHp === 0) toastQueue.push('💀 HP 歸零！');
+
+        return { ...prev, hp: newHp, mp: newMp, gold: newGold };
+      });
+    }
+
+    // 批次更新 NPC 好感度
+    if (affinityUpdates.length > 0) {
+      setNpcs(prev => prev.map(npc => {
+        const update = affinityUpdates.find(u =>
+          npc.name.includes(u.name) || u.name.includes(npc.name)
+        );
+        if (!update) return npc;
+        const newAffinity = Math.max(-100, Math.min(100, npc.affection + update.delta));
+        toastQueue.push(`${update.delta > 0 ? '💛' : '🖤'} ${npc.name} 好感度 ${update.delta > 0 ? '+' : ''}${update.delta}`);
+        return { ...npc, affection: newAffinity };
+      }));
+    }
+
+    // 依序顯示 toast（每條間隔 600ms）
+    toastQueue.forEach((msg, i) => {
+      setTimeout(() => showToast(msg), i * 600);
+    });
+
+    return narrative;
+  };
+
+  // ─── 關鍵字掃描（掃最近 N 則對話的文字，含玩家輸入）──────────────────────────
+  const scanKeywords = (keywords: string[], scanDepth = 5, extraText = ''): boolean => {
+    if (!keywords || keywords.length === 0) return true;
+    const recentTexts = messages
+      .slice(-scanDepth)
+      .map(m => m.text.toLowerCase())
+      .join(' ') + ' ' + extraText.toLowerCase();
+    return keywords.some(kw => recentTexts.includes(kw.toLowerCase()));
+  };
+
+  // ─── 記憶觸發判斷（含 sticky / cooldown / probability）────────────────────
+  const isMemoryTriggered = (mem: any, userInput = ''): boolean => {
+    if (!mem.isActive) return false;
+
+    // cooldown 中：不觸發
+    if ((cooldownCounters[mem.id] || 0) > 0) return false;
+
+    // sticky 中：持續觸發（不需要重新判斷關鍵字）
+    if ((stickyCounters[mem.id] || 0) > 0) return true;
+
+    // 機率判斷（probability < 100 才需要跑隨機）
+    const prob = mem.trigger?.probability ?? 100;
+    if (prob < 100 && Math.random() * 100 > prob) return false;
+
+    // 關鍵字判斷（合併所有 tags 的關鍵字）
+    const allKeywords = [
+      ...(mem.tags?.locations || []),
+      ...(mem.tags?.npcs || []),
+      ...(mem.tags?.factions || []),
+      ...(mem.tags?.keywords || []),
+    ];
+    const depth = mem.trigger?.scanDepth ?? 5;
+    return scanKeywords(allKeywords, depth, userInput);
+  };
+
+  // ─── 每次 AI 回應後更新 sticky/cooldown 計數器 ────────────────────────────
+  const tickMemoryCounters = (triggeredIds: string[]) => {
+    setStickyCounters(prev => {
+      const next = { ...prev };
+      // 新觸發的記憶：設定 sticky 計數
+      triggeredIds.forEach(id => {
+        const mem = memories.find(m => m.id === id);
+        const sticky = mem?.trigger?.sticky ?? 0;
+        if (sticky > 0) next[id] = sticky;
+      });
+      // 既有 sticky：倒數
+      Object.keys(next).forEach(id => {
+        if (!triggeredIds.includes(id) && next[id] > 0) {
+          next[id] -= 1;
+          if (next[id] === 0) {
+            // sticky 結束，進入 cooldown
+            const mem = memories.find(m => m.id === id);
+            const cd = mem?.trigger?.cooldown ?? 0;
+            if (cd > 0) {
+              setCooldownCounters(c => ({ ...c, [id]: cd }));
+            }
+            delete next[id];
+          }
+        }
+      });
+      return next;
+    });
+    setCooldownCounters(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(id => {
+        if (next[id] > 0) next[id] -= 1;
+        if (next[id] === 0) delete next[id];
+      });
+      return next;
+    });
+  };
+
+  // ─── Prompt 組裝（只注入當前地點相關內容）────────────────────────────────────
+  const buildPrompt = (userInput: string): string => {
+    const SLIDING_WINDOW = 20; // 只送最近 20 則對話
+
+    // Lorebook：只注入與當前地點相關，或沒有地點限制的條目
+    // ── Lorebook 觸發判斷（支援 AND 邏輯 + insertion_order 排序）──────────────
+    const lorebookScanText = messages.slice(-5).map(m => m.text).join(' ') + ' ' + userInput;
+
+    const lorebookHitsKeywords = (e: any): boolean => {
+      const keys: string[] = e.keywords || [];
+      const secKeys: string[] = e.secondaryKeys || [];
+      const selective: boolean = e.selective ?? false;
+      const text = lorebookScanText.toLowerCase();
+
+      // 主關鍵字（OR）
+      const primaryHit = keys.length === 0 || keys.some(k => text.includes(k.toLowerCase()));
+      if (!primaryHit) return false;
+      // AND 邏輯：selective=true 時次要關鍵字也要命中
+      if (selective && secKeys.length > 0) {
+        return secKeys.some(k => text.includes(k.toLowerCase()));
+      }
+      return true;
+    };
+
+    const relevantLorebook = lorebookEntries
+      .filter(e => {
+        if (!e.isActive) return false;
+        // NPC 類：只注入有釘選或在當前場景的
+        if (e.category === 'NPC') {
+          const inScene = npcs.some(n => n.isPinned && n.name === e.title) ||
+                          npcs.some(n => n.location === currentLocation && n.name === e.title);
+          if (!inScene) return false;
+          return lorebookHitsKeywords(e);
+        }
+        // 地點類：標題符合當前地點，且關鍵字命中
+        if (e.category === '地點') {
+          const locationMatch = currentLocation.includes(e.title) || e.title.includes(currentLocation);
+          if (!locationMatch) return false;
+          return lorebookHitsKeywords(e);
+        }
+        // 其他類：關鍵字命中才注入（若無關鍵字 = 永遠注入）
+        return lorebookHitsKeywords(e);
+      })
+      .sort((a, b) => (a.insertionOrder ?? 100) - (b.insertionOrder ?? 100));
+
+    // 當前地點記憶
+    // 用新記憶系統篩選當前場景相關記憶
+    const triggeredMemories = memories.filter(m => isMemoryTriggered(m, userInput));
+    const worldMems    = triggeredMemories.filter(m => m.type === 'world');
+    const regionMems   = triggeredMemories.filter(m => m.type === 'region');
+    const sceneMems    = triggeredMemories.filter(m => m.type === 'scene' &&
+      (m.tags?.locations || []).some((l: string) => l === currentLocation || currentLocation.includes(l)));
+    const npcMems      = triggeredMemories.filter(m => m.type === 'npc');
+
+    // 釘選 NPC
+    const pinnedNpcs = npcs.filter(n => n.isPinned);
+
+    // 滑動窗口：只取最近 N 則
+    const recentMessages = messages.slice(-SLIDING_WINDOW);
+
+    return `[System Context]
+World Premise: ${systemPrompt.worldPremise}
+Roleplay Rules: ${systemPrompt.roleplayRules}
+Writing Style: ${systemPrompt.writingStyle}
+
+---
+[Player]
+Name: ${profile.name} | Job: ${profile.job}
+Appearance: ${profile.appearance}
+Personality: ${profile.personality}
+${profile.other ? `Other: ${profile.other}` : ''}
+
+[Current State]
+Location: ${currentLocation}
+Time: ${timeState.year}年${timeState.month}月${timeState.day}日 ${String(timeState.hour).padStart(2,'0')}:${String(timeState.minute).padStart(2,'0')} | Weather: ${timeState.weather}
+HP: ${profile.hp}/${profile.maxHp} | MP: ${profile.mp}/${profile.maxMp} | Gold: ${profile.gold}
+
+[Inventory]
+${inventory.length > 0 ? inventory.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : '（空）'}
+${consumables.length > 0 ? consumables.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : ''}
+
+---
+[🌍 World Memory]
+${worldMems.length > 0 ? worldMems.map(m => `- ${m.content}${m.tags?.factions?.length ? ' ['+m.tags.factions.join(',')+']' : ''}`).join('\n') : '（無）'}
+
+[🗺️ Region Memory]
+${regionMems.length > 0 ? regionMems.map(m => `- ${m.content}${m.tags?.locations?.length ? ' ['+m.tags.locations.join(',')+']' : ''}`).join('\n') : '（無）'}
+
+[🏠 Scene Memory: ${currentLocation}]
+${sceneMems.length > 0 ? sceneMems.map(m => `- ${m.content}`).join('\n') : '（無）'}
+
+[👤 NPC Memory]
+${npcMems.length > 0 ? npcMems.map(m => `- ${m.content}${m.tags?.npcs?.length ? ' ['+m.tags.npcs.join(',')+']' : ''}`).join('\n') : '（無）'}
+
+---
+[Scene Lorebook]
+${relevantLorebook.map(e => {
+  if (e.category === 'NPC') {
+    return `[NPC] ${e.title}｜職業：${e.job || ''}｜外貌：${e.appearance || ''}｜個性：${e.personality || ''}｜備註：${e.other || ''}`;
+  }
+  return `[${e.category}] ${e.title}：${e.content}`;
+}).join('\n') || '（無）'}
+
+[Pinned NPCs]
+${pinnedNpcs.length > 0 ? pinnedNpcs.map(n =>
+  `- ${n.name}（${n.job}）好感度:${n.affection}｜${n.memories?.length > 0 ? '記憶: ' + n.memories.join(' / ') : ''}`
+).join('\n') : '（無）'}
+
+---
+[Active Diary]
+${(() => {
+  const triggered = diaryEntries.filter(e => {
+    if (!e.isActive) return false;
+    return scanKeywords(e.keywords || []);
+  });
+  return triggered.length > 0
+    ? triggered.map(e => {
+        const kwLabel = e.keywords?.length > 0 ? ` [觸發詞: ${e.keywords.join(',')}]` : '';
+        return `- ${e.text}${kwLabel}`;
+      }).join('\n')
+    : '（無）';
+})()}
+
+---
+[Recent Chat (最近${Math.min(SLIDING_WINDOW, recentMessages.length)}則)]
+${recentMessages.map(m => `${m.role === 'user' ? 'Player' : 'DM'}: ${m.text}`).join('\n')}
+Player: ${userInput}
+
+---
+[COMMAND FORMAT]
+當劇情發生數值變化時，在回應最前面輸出指令區塊，格式如下：
+<<COMMANDS>>
+HP:-15
+GOLD:+200
+AFFINITY:角色名:+10
+LOCATION:新地點名稱
+TIME:+1h
+ITEM_ADD:道具名:1:說明文字
+MEMORY_ADD:region:normal:迷霧森林昨日大火，黑牙氏族前往支援:locations=迷霧森林:factions=黑牙氏族:keywords=大火,火災:sticky=3
+MEMORY_ADD:scene:normal:酒館因打架暫時關閉:locations=酒館
+MEMORY_ADD:npc:normal:芬里爾透露停火協議內容:npcs=芬里爾:keywords=停火,協議
+MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
+<</COMMANDS>>
+指令區塊之後才是給玩家看的敘事內容。若無數值變化則省略指令區塊。
+
+Please respond as the DM.`;
+  };
+
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
@@ -428,72 +941,40 @@ export default function App() {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
-      const prompt = `
-[System Context]
-World Premise: ${systemPrompt.worldPremise}
-Roleplay Rules: ${systemPrompt.roleplayRules}
-Writing Style: ${systemPrompt.writingStyle}
-
-[Player Profile]
-Name: ${profile.name}
-Job: ${profile.job}
-Appearance: ${profile.appearance}
-Personality: ${profile.personality}
-Other: ${profile.other}
-Current Location: ${currentLocation}
-HP: ${profile.hp}/${profile.maxHp}
-MP: ${profile.mp}/${profile.maxMp}
-Gold: ${profile.gold}
-
-[Inventory]
-${inventory.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n')}
-
-[Consumables]
-${consumables.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n')}
-
-[Lorebook (Active)]
-${lorebookEntries.filter(e => e.isActive).map(e => {
-  if (e.category === 'NPC') {
-    return `[${e.category}] ${e.title}: 職業：${e.job || ''}，外貌：${e.appearance || ''}，個性：${e.personality || ''}，其他：${e.other || ''}`;
-  }
-  return `[${e.category}] ${e.title}: ${e.content}`;
-}).join('\n')}
-
-[NPCs (Pinned)]
-${npcs.filter(n => n.isPinned).map(n => `- ${n.name} (${n.job}): 外貌：${n.appearance} 個性：${n.personality} 其他：${n.other || '無'} Memories: ${n.memories?.join('; ') || 'None'}`).join('\n')}
-
-[World Memory]
-${worldMemory.map(m => `- ${m}`).join('\n')}
-
-[Faction Memory]
-${factionMemory.map(f => `- [${f.name}]: ${f.memories.join('; ')}`).join('\n')}
-
-[Location Memory]
-${locationMemory.filter(loc => loc.name === currentLocation || currentLocation.includes(loc.name)).map(loc => `- [${loc.name}]: ${loc.memories.join('; ')}`).join('\n')}
-
-[Chat History]
-${messages.map(m => `${m.role === 'user' ? 'Player' : 'DM'}: ${m.text}`).join('\n')}
-Player: ${inputText}
-
-Please respond as the DM according to the rules and writing style.
-`;
+      const prompt = buildPrompt(inputText);
 
       const response = await ai.models.generateContentStream({
-        model: 'gemini-3.1-pro-preview',
+        model: 'gemini-2.0-flash',
         contents: prompt,
       });
 
       const aiMessageId = Date.now() + 1;
+      // 先插入空白訊息占位
       setMessages(prev => [...prev, { id: aiMessageId, role: 'system', text: '' }]);
 
+      let fullText = '';
       for await (const chunk of response) {
         if (chunk.text) {
-          setMessages(prev => prev.map(m => 
-            m.id === aiMessageId ? { ...m, text: m.text + chunk.text } : m
+          fullText += chunk.text;
+          // 串流時先原始顯示（包含COMMANDS區塊），完成後再解析
+          setMessages(prev => prev.map(m =>
+            m.id === aiMessageId ? { ...m, text: fullText } : m
           ));
         }
       }
+
+      // 串流結束後：解析 COMMANDS、執行數值變更、更新純敘事文字
+      const narrative = parseAndExecuteCommands(fullText);
+      setMessages(prev => prev.map(m =>
+        m.id === aiMessageId ? { ...m, text: narrative } : m
+      ));
+
+      // 更新記憶的 sticky/cooldown 計數器
+      const triggeredIds = memories
+        .filter(m => isMemoryTriggered(m, inputText))
+        .map(m => m.id);
+      tickMemoryCounters(triggeredIds);
+
     } catch (error) {
       console.error('Error calling Gemini API:', error);
       showToast('API 呼叫失敗，請檢查設定或網路連線');
@@ -636,10 +1117,10 @@ Please respond as the DM according to the rules and writing style.
                                 setConsumables(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - 1 } : i).filter(i => i.quantity > 0));
                                 
                                 if (item.name === '小紅藥水') {
-                                  setProfile(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + 30) }));
+                                  setProfile(prev => ({ ...prev, hp: Math.max(0, prev.hp + 30) }));
                                   setToastMessage(`使用了 ${item.name}，恢復了 30 點 HP`); 
                                 } else if (item.name === '麵包') {
-                                  setProfile(prev => ({ ...prev, hp: Math.min(prev.maxHp, prev.hp + 10) }));
+                                  setProfile(prev => ({ ...prev, hp: Math.max(0, prev.hp + 10) }));
                                   setToastMessage(`使用了 ${item.name}，恢復了 10 點 HP`); 
                                 } else {
                                   setToastMessage(`使用了 ${item.name}`); 
@@ -979,42 +1460,89 @@ Please respond as the DM according to the rules and writing style.
                   </p>
                 </div>
 
-                {worldMemory.map((mem, i) => (
-                  <div key={i} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-indigo-500">{mem}</div>
+                {/* 世界記憶 */}
+                {memories.filter(m => m.type === 'world' && m.isActive).map(mem => (
+                  <div key={mem.id} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-indigo-500">
+                    {mem.importance === 'critical' && <span className="text-indigo-400 mr-1">★</span>}
+                    {mem.content}
+                    {mem.tags?.factions?.length > 0 && <span className="text-stone-500 ml-1">[{mem.tags.factions.join(',')}]</span>}
+                  </div>
                 ))}
+                {memories.filter(m => m.type === 'world').length === 0 && (
+                  <div className="text-xs text-stone-600 italic">尚無世界記憶</div>
+                )}
               </div>
             </div>
 
-            <div className="mb-4">
-              <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider">陣營 / 組織</h4>
-              {factionMemory.map((faction, i) => (
-                <div key={i} className="mb-2">
-                  <div className="text-xs text-stone-400 mb-1">[{faction.name}]</div>
+            {/* 區域記憶 */}
+            {(() => {
+              const regionMems = memories.filter(m =>
+                m.type === 'region' && m.isActive &&
+                (m.tags?.locations || []).some((l: string) => l === currentLocation || currentLocation.includes(l) || l.includes(currentLocation))
+              );
+              return regionMems.length > 0 ? (
+                <div className="mb-4">
+                  <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                    🗺️ 區域記憶
+                  </h4>
                   <div className="space-y-1">
-                    {faction.memories.map((mem, j) => (
-                      <div key={j} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-rose-500">{mem}</div>
+                    {regionMems.map(mem => (
+                      <div key={mem.id} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-amber-500">
+                        {mem.content}
+                        {mem.expiresAt && <span className="text-stone-500 ml-1">（至{mem.expiresAt}）</span>}
+                      </div>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
+              ) : null;
+            })()}
 
-            <div>
-              <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider">地點記憶</h4>
-              {locationMemory.filter(loc => loc.name === currentLocation || currentLocation.includes(loc.name)).map((loc, i) => (
-                <div key={i} className="mb-2">
-                  <div className="text-xs text-stone-400 mb-1">[{loc.name}]</div>
+            {/* 場景記憶 */}
+            {(() => {
+              const sceneMems = memories.filter(m =>
+                m.type === 'scene' && m.isActive &&
+                (m.tags?.locations || []).some((l: string) => l === currentLocation || currentLocation.includes(l) || l.includes(currentLocation))
+              );
+              return (
+                <div className="mb-4">
+                  <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                    🏠 場景記憶
+                  </h4>
+                  {sceneMems.length > 0 ? (
+                    <div className="space-y-1">
+                      {sceneMems.map(mem => (
+                        <div key={mem.id} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-emerald-500">
+                          {mem.content}
+                          {mem.source === 'ai_generated' && <span className="text-stone-600 ml-1">（AI）</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-stone-600 italic">此場景尚無記憶...</div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* NPC 記憶 */}
+            {(() => {
+              const npcMems = memories.filter(m => m.type === 'npc' && m.isActive);
+              return npcMems.length > 0 ? (
+                <div>
+                  <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                    👤 NPC 記憶
+                  </h4>
                   <div className="space-y-1">
-                    {loc.memories.map((mem, j) => (
-                      <div key={j} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-emerald-500">{mem}</div>
+                    {npcMems.map(mem => (
+                      <div key={mem.id} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-rose-500">
+                        {mem.tags?.npcs?.length > 0 && <span className="text-rose-400 mr-1">[{mem.tags.npcs.join(',')}]</span>}
+                        {mem.content}
+                      </div>
                     ))}
                   </div>
                 </div>
-              ))}
-              {locationMemory.filter(loc => loc.name === currentLocation || currentLocation.includes(loc.name)).length === 0 && (
-                <div className="text-xs text-stone-500 italic">此地點尚無相關記憶...</div>
-              )}
-            </div>
+              ) : null;
+            })()}
           </div>
 
         </div>
@@ -1184,7 +1712,8 @@ Please respond as the DM according to the rules and writing style.
                   
                   <div className="flex-1 flex flex-col">
                     {editingDiaryId === entry.id ? (
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-2">
+                        {/* 內容輸入 */}
                         <textarea 
                           value={entry.text}
                           onChange={(e) => handleDiaryChange(entry.id, e.target.value)}
@@ -1200,7 +1729,39 @@ Please respond as the DM according to the rules and writing style.
                             e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
                           }}
                         />
-                        <div className="flex justify-end mt-2">
+
+                        {/* 關鍵字區塊 */}
+                        <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5">
+                          <div className="text-[10px] text-stone-400 mb-2 uppercase tracking-wider">
+                            觸發關鍵字 <span className="text-stone-600 normal-case">（空白 = 勾選後永遠注入）</span>
+                          </div>
+                          {/* 現有標籤 */}
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {(entry.keywords || []).map((kw: string) => (
+                              <span key={kw} className="flex items-center gap-1 bg-indigo-900/50 border border-indigo-500/40 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
+                                {kw}
+                                <button
+                                  onClick={() => handleDiaryKeywordRemove(entry.id, kw)}
+                                  className="text-indigo-400 hover:text-rose-400 transition leading-none"
+                                >×</button>
+                              </span>
+                            ))}
+                          </div>
+                          {/* 新增關鍵字輸入 */}
+                          <input
+                            type="text"
+                            placeholder="輸入關鍵字後按 Enter..."
+                            className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleDiaryKeywordAdd(entry.id, e.currentTarget.value);
+                                e.currentTarget.value = '';
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex justify-end">
                           <button 
                             onClick={() => {
                               setEditingDiaryId(null);
@@ -1213,12 +1774,26 @@ Please respond as the DM according to the rules and writing style.
                         </div>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         onDoubleClick={() => setEditingDiaryId(entry.id)}
                         className={`w-full text-sm min-h-[60px] whitespace-pre-wrap cursor-text p-3 rounded-xl border border-transparent hover:border-white/5 transition ${entry.isActive ? 'text-stone-200' : 'text-stone-500'}`}
                         title="雙擊以編輯"
                       >
                         {entry.text || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
+                        {/* 關鍵字標籤（檢視模式） */}
+                        {(entry.keywords || []).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {(entry.keywords || []).map((kw: string) => (
+                              <span key={kw} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                                scanKeywords([kw])
+                                  ? 'bg-indigo-900/60 border-indigo-500/50 text-indigo-300'
+                                  : 'bg-stone-800/60 border-stone-600/40 text-stone-500'
+                              }`}>
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1382,6 +1957,68 @@ Please respond as the DM according to the rules and writing style.
                             }}
                           />
                         )}
+                        {/* ── 觸發關鍵字區塊 ── */}
+                        <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5 space-y-3">
+                          
+                          {/* 主關鍵字 */}
+                          <div>
+                            <div className="text-[10px] text-stone-400 mb-1.5 uppercase tracking-wider">
+                              主關鍵字 <span className="text-stone-600 normal-case">（OR，任一命中即觸發；空白 = 依地點/NPC規則）</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mb-1.5">
+                              {(entry.keywords || []).map((kw: string) => (
+                                <span key={kw} className="flex items-center gap-1 bg-indigo-900/50 border border-indigo-500/40 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
+                                  {kw}
+                                  <button onClick={() => handleLorebookKeywordRemove(entry.id, 'keywords', kw)} className="text-indigo-400 hover:text-rose-400 transition leading-none">×</button>
+                                </span>
+                              ))}
+                            </div>
+                            <input type="text" placeholder="輸入後按 Enter..."
+                              className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition"
+                              onKeyDown={(e) => { if (e.key === 'Enter') { handleLorebookKeywordAdd(entry.id, 'keywords', e.currentTarget.value); e.currentTarget.value = ''; }}} />
+                          </div>
+
+                          {/* selective toggle + 次要關鍵字 */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <button
+                                onClick={() => setLorebookEntries(prev => prev.map(e => e.id === entry.id ? { ...e, selective: !e.selective } : e))}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border transition ${entry.selective ? 'bg-amber-900/50 border-amber-500/50 text-amber-300' : 'bg-stone-800/50 border-stone-600/40 text-stone-500'}`}
+                              >
+                                AND 邏輯 {entry.selective ? '開' : '關'}
+                              </button>
+                              <span className="text-[10px] text-stone-600">開啟時，主關鍵字 AND 次要關鍵字都要命中</span>
+                            </div>
+                            {entry.selective && (
+                              <>
+                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                  {(entry.secondaryKeys || []).map((kw: string) => (
+                                    <span key={kw} className="flex items-center gap-1 bg-amber-900/50 border border-amber-500/40 text-amber-300 text-xs px-2 py-0.5 rounded-full">
+                                      {kw}
+                                      <button onClick={() => handleLorebookKeywordRemove(entry.id, 'secondaryKeys', kw)} className="text-amber-400 hover:text-rose-400 transition leading-none">×</button>
+                                    </span>
+                                  ))}
+                                </div>
+                                <input type="text" placeholder="次要關鍵字，輸入後按 Enter..."
+                                  className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-amber-500/50 transition"
+                                  onKeyDown={(e) => { if (e.key === 'Enter') { handleLorebookKeywordAdd(entry.id, 'secondaryKeys', e.currentTarget.value); e.currentTarget.value = ''; }}} />
+                              </>
+                            )}
+                          </div>
+
+                          {/* Insertion Order */}
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-stone-400 uppercase tracking-wider whitespace-nowrap">注入順序</span>
+                            <input
+                              type="number" min={0} max={999}
+                              value={entry.insertionOrder ?? 100}
+                              onChange={(e) => setLorebookEntries(prev => prev.map(en => en.id === entry.id ? { ...en, insertionOrder: parseInt(e.target.value) || 0 } : en))}
+                              className="w-20 bg-stone-800/50 border border-white/10 rounded-lg px-2 py-1 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition text-center"
+                            />
+                            <span className="text-[10px] text-stone-600">數字越小越先注入（0–999）</span>
+                          </div>
+                        </div>
+
                         <div className="flex justify-end mt-2">
                           <button 
                             onClick={() => {
@@ -1424,6 +2061,20 @@ Please respond as the DM according to the rules and writing style.
                         ) : (
                           <div className={`text-sm leading-relaxed whitespace-pre-wrap p-2 rounded group-hover:bg-white/5 transition ${!entry.isActive ? 'text-stone-500' : 'text-stone-300'}`}>
                             {entry.content || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
+                          </div>
+                        )}
+                        {/* 關鍵字標籤（檢視模式） */}
+                        {((entry.keywords || []).length > 0 || (entry.secondaryKeys || []).length > 0) && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 px-2">
+                            {(entry.keywords || []).map((kw: string) => (
+                              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900/40 border border-indigo-500/30 text-indigo-400">{kw}</span>
+                            ))}
+                            {entry.selective && (entry.secondaryKeys || []).map((kw: string) => (
+                              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-900/40 border border-amber-500/30 text-amber-400">+{kw}</span>
+                            ))}
+                            {entry.insertionOrder !== undefined && entry.insertionOrder !== 100 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-800 border border-stone-600/40 text-stone-500">#{entry.insertionOrder}</span>
+                            )}
                           </div>
                         )}
                       </div>
