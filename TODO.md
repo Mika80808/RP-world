@@ -13,10 +13,6 @@
 
 ## 🔴 高優先
 
-- [ ] **Token 上限設定與滑動視窗**
-  在系統設定 (Settings Modal) 新增一個拉桿 (Slider)，讓玩家自選 Token 上限 (16K, 32K, 64K)。
-  在 `buildPrompt` 組合對話歷史時，根據此上限截斷過舊的對話，實作 Sliding Window 機制。
-
 - [ ] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
   包含五種情境：世界事件 / 區域事件 / 場景狀態改變 / NPC 情報 / 玩家重要事件。
@@ -55,6 +51,18 @@
 ---
 
 ## ✅ 已完成
+
+- [x] **介面與提示詞優化**
+  2026-03-12 Gemini: 增加編輯訊息的文字框高度、限制快捷選項在 10 字以內、對話視窗底部毛玻璃效果改為往上淡出、修改初始訊息（ID 1）開場白。
+
+- [x] **個人資訊與數值系統調整**
+  2026-03-12 Gemini: 個人資訊的職業預設為「異鄉人」，補充各欄位提示文字，預設 MP、金錢為 0，並移除 HP / MP 的上限設定（`maxHp` / `maxMp`）。
+
+- [x] **快捷選項與重新生成功能修復**
+  2026-03-12 Gemini: 修復快捷選項點擊無效的問題，並將其改為動態生成（AI 透過 `<<OPTIONS>>` 輸出）。實作 `handleRegenerate` 函數以支援 AI 回覆的重新生成功能。修復 AI 輸出 `</OPTIONS>>` 或忘記閉合標籤導致解析失敗的問題，並過濾掉選項前面的數字編號。
+
+- [x] **日記系統升級（水晶球日記 + 融合日記）**
+  2026-03-12 Claude: 新增 `handleGenerateDiary()` / `handleMergeDiary()`，新增 state `isDiaryMergeMode` / `diaryMergeSelection` / `isDiaryGenerating` / `expandedMergedIds`。日記 Modal 按鈕區重構為三個 icon 按鈕。DiaryEntry 新增 `source` / `mergedFrom` / `isMerged` 欄位。
 
 - [x] **前端 COMMANDS 解析器**
   2026-03-12 Claude: 實作於 `parseAndExecuteCommands()`，支援 HP/MP/金幣/好感度/位置/時間/道具。串流結束後執行，Toast 間隔 600ms。

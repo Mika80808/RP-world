@@ -90,37 +90,34 @@ export default function App() {
     () => localStorage.getItem('gemini_api_key') || ''
   );
 
-  // ─── Context Size ─────────────────────────────────────────────────────────────
-  const [contextSize, setContextSize] = useState<number>(
-    () => parseInt(localStorage.getItem('context_size') || '16')
-  );
-
   // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
   const [memories, setMemories] = useState<any[]>([]);
   const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
   const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
 
   const [profile, setProfile] = useState({
-    name: '亞瑟',
-    job: '劍士',
-    appearance: '黑髮黑眼，身穿舊皮甲，背著一把鐵劍。',
-    personality: '冷靜、謹慎，對陌生人抱有戒心。',
-    other: '正在尋找失散的妹妹。',
+    name: '異鄉人',
+    job: '異鄉人',
+    appearance: '',
+    personality: '',
+    other: '',
     hp: 50,
-    maxHp: 100,
-    mp: 50,
-    maxMp: 50,
-    gold: 1250
+    mp: 0,
+    gold: 0
   });
 
   const [systemPrompt, setSystemPrompt] = useState({
-    worldPremise: '這是一個奇幻異世界，我（異鄉人）將在不知情的情況下探索這個異世界、完成任務、與角色發展關係與感情。\n- 這個異世界由某種高維智慧所維護。\n- 異鄉人來自現實世界，具備基本常識，但對異世界完全陌生。\n- 世界中存在童話故事的變體，例如小紅帽、美人魚等，但劇情與角色可能出現劇情偏移或性格改變。\n- 世界設有主要據點（如中心城鎮）與可探索地區（森林、湖泊、荒原、山區等），每區域對應一組主題任務。\n- 也有許多異世界異鄉人選擇留下(例如成家立業等等)\n- 需體現角色特性，每個種族有特殊的外型特徵和文化習俗，讓角色具有特色。',
-    roleplayRules: '1. 情感深度： 所有角色（含引路者）都可自由與我建立並發展多元情感。\n2. 劇情驅動： 確保每一次互動都至少為故事增添了一個新資訊、一個新懸念、或是一個人物關係的微小變化。\n3. 角色的自主性:\n- 每位角色具備獨特個性、習慣、目標、怪癖、慾望及社會地位。藉由角色與環境或人物的互動展現其身分、能力與特質，賦予存在價值。\n- 角色擁有獨立日常作息與目標。即使和我沒有互動，角色也會繼續生活、執行事務，其行動可能與我的行動交匯或觸發新情節。世界不只圍繞我的即時行動運轉。\n- 我與角色互動時，場景不僅限於兩人對話，其他角色可能隨時加入、插話、離開或分心。\n4. 人性化的理解力：在日常休閒或私人的社交情境中，優先將我的想法理解為其**內在真實情感**的流露，而非帶有隱藏目的的策略。展現出人性化的理解與共情，但敵對角色不受此限制。\n5. 世界的動態性：\n- Player Decentralization，世界有自己的時鐘和日程表。\n- Emergent Narrative，突發事件與環境變化隨時發生，確保不可預測性與真實流動感。\n6. 任務：\n- 日常任務：以輕鬆方式引導我探索世界，豐富內容，增強沉浸感。\n- 大型任務：將對故事產生影響，事件發生的前因後果及背景邏輯須合理。\n7. NPC生成：當AI生成新NPC時，需必備：姓名、性別、年齡、種族、職業、外貌、個性。\n8. NPC記錄門檻：若AI生成的新NPC具備明確姓名、職業，且會固定出現在特定場所（如店鋪老闆、公會負責人等），請在對話中特別標註 [重要NPC]。\n\n## 親密內容\n- 確保所有成人親密內容均服務於敘事和人物發展，角色行為須符合人物設定。\n- 在親密場景中使用真實、細膩且生動的措詞，器官名稱可使用生物學名。\n- 情侶之間的親密行為，是互相引誘、探索、取悅的過程，角色需依照兩人關係調整學習曲線，避免模式僵化。\n- Slowburn. Prolong all aspects of the back-and-forth journey of sex (foreplay, actions, climax)—orgasm is not the goal.',
-    writingStyle: `每回合輸出包含三個區塊：\n\n1. 劇情段落：\n- 使用繁體中文，小說體，1000字左右的故事內容，保持句子完整流暢。\n- 描述接下來場景發生的事，不須重複我給出的內容。\n- 描寫角色們，寫出精確、逼真的細節來創造生動的場景和可信的人物，使用生動的感官細節，創造沉浸式體驗。\n- 保持故事節奏，不要跳躍太快。\n- 角色們需主動和我互動，結尾須保持開放性，讓我接續下一段劇情。\n- 文筆須豐富多彩、描述感情時須內斂。\n- 嚴禁結束章節，Avoid meta dialogue — story should stay fully immersed in it's own reality.`
+    worldPremise: '這是一個奇幻異世界，{{user}}將在不知情的情況下探索這個異世界、完成任務、與角色發展關係與感情。\n- 這個異世界由某種高維智慧所維護。\n- 異鄉人來自現實世界，具備基本常識，但對異世界完全陌生。\n- 世界中存在童話故事的變體，例如小紅帽、美人魚等，但劇情與角色可能出現劇情偏移或性格改變。\n- 世界設有主要據點（如中心城鎮）與可探索地區（森林、湖泊、荒原、山區等），每區域對應一組主題任務。\n- 也有許多異世界異鄉人選擇留下(例如成家立業等等)\n- 需體現角色特性，每個種族有特殊的外型特徵和文化習俗，讓角色具有特色。',
+    roleplayRules: '1. 情感深度： 所有角色（含引路者）都可自由與{{user}}建立並發展多元情感。\n2. 劇情驅動： 確保每一次互動都至少為故事增添了一個新資訊、一個新懸念、或是一個人物關係的微小變化。\n3. 角色的自主性:\n- 每位角色具備獨特個性、習慣、目標、怪癖、慾望及社會地位。藉由角色與環境或人物的互動展現其身分、能力與特質，賦予存在價值。\n- 角色擁有獨立日常作息與目標。即使和{{user}}沒有互動，角色也會繼續生活、執行事務，其行動可能與{{user}}的行動交匯或觸發新情節。世界不只圍繞{{user}}的即時行動運轉。\n- 我與角色互動時，場景不僅限於兩人對話，其他角色可能隨時加入、插話、離開或分心。\n4. 人性化的理解力：在日常休閒或私人的社交情境中，優先將我的想法理解為其**內在真實情感**的流露，而非帶有隱藏目的的策略。展現出人性化的理解與共情，但敵對角色不受此限制。\n5. 世界的動態性：\n- Player Decentralization，世界有自己的時鐘和日程表。\n- Emergent Narrative，突發事件與環境變化隨時發生，確保不可預測性與真實流動感。\n6. 任務：\n- 日常任務：以輕鬆方式引導我探索世界，豐富內容，增強沉浸感。\n- 大型任務：將對故事產生影響，事件發生的前因後果及背景邏輯須合理。\n7. NPC生成：當AI生成新NPC時，需必備：姓名、性別、年齡、種族、職業、外貌、個性。\n8. NPC記錄門檻：若AI生成的新NPC具備明確姓名、職業，且會固定出現在特定場所（如店鋪老闆、公會負責人等），請在對話中特別標註 [重要NPC]。\n\n## 親密內容\n- 確保所有成人親密內容均服務於敘事和人物發展，角色行為須符合人物設定。\n- 在親密場景中使用真實、細膩且生動的措詞，器官名稱可使用生物學名。\n- 情侶之間的親密行為，是互相引誘、探索、取悅的過程，角色需依照兩人關係調整學習曲線，避免模式僵化。\n- Slowburn. Prolong all aspects of the back-and-forth journey of sex (foreplay, actions, climax)—orgasm is not the goal.',
+    writingStyle: `每回合輸出：\n- 使用繁體中文，小說體，1000字左右的故事內容，保持句子完整流暢。\n- 描述接下來場景發生的事，不須重複{{user}}給出的內容。\n- 描寫角色們，寫出精確、逼真的細節來創造生動的場景和可信的人物，使用生動的感官細節，創造沉浸式體驗。\n- 保持故事節奏，不要跳躍太快。\n- 角色們需主動和異鄉人互動，結尾須保持開放性。\n- 文筆須豐富多彩、描述感情時須內斂。\n- 嚴禁結束章節，Avoid meta dialogue — story should stay fully immersed in it's own reality.`
   });
 
   const [diaryEntries, setDiaryEntries] = useState<any[]>([]);
   const [editingDiaryId, setEditingDiaryId] = useState<number | null>(null);
+  const [isDiaryMergeMode, setIsDiaryMergeMode] = useState(false);
+  const [diaryMergeSelection, setDiaryMergeSelection] = useState<number[]>([]);
+  const [isDiaryGenerating, setIsDiaryGenerating] = useState(false);
+  const [expandedMergedIds, setExpandedMergedIds] = useState<number[]>([]);
 
   const [lorebookEntries, setLorebookEntries] = useState([
     { id: 1, title: '月湖鎮', content: '世界中心，醉醺醺酒館、任務板(日常任務)、情報來源、各類店家、住宅與商店街混合，在這裡可以見到各種奇幻種族。外圍有各種公會的據點，例如異鄉人公會、獵人公會、冒險者公會等等。西邊外圍有成人紅燈區。', category: '地點', isActive: true },
@@ -169,8 +166,7 @@ export default function App() {
   const [consumables, setConsumables] = useState<any[]>([]);
 
   const [messages, setMessages] = useState([
-    { id: 1, role: 'system', text: '盼來了有趣的新房客。' },
-
+    { id: 1, role: 'system', text: '*你在一陣微涼的晨風中醒來，意識像是從深不見底的湖底緩緩浮上水面。陽光穿透層層疊疊的奇異葉片，篩落在臉上，形成斑駁的光點。身下是柔軟而潮濕的苔癬，空氣中瀰漫著泥土、腐葉以及某種不知名野花的清甜香氣，一切都陌生得令人心慌。*\n\n*你記得的最後一件事，是在舒適的床上滑著手機，準備迎接又一個平凡的上班日。而現在，你正躺在一片廣闊無垠的原始森林裡，高聳入雲的巨木有著從未見過的扭曲枝幹，周遭的蕨類植物甚至比人還高。*\n\n*在你還在試圖理解現況時，一個清晰、中性且帶著一絲戲謔的聲音，直接在你腦海中響起。*\n\n🌀引路者：「早安，睡美人。或者我該說……迷途的羔羊？感覺你有很多問題想問，別急，我們有的是時間。首先，恭喜你，你還活著。」\n\n*這聲音聽起來不帶惡意，反而像個看了太多好戲的無聊房東，終於盼來了有趣的新房客。*' },
   ]);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -178,6 +174,7 @@ export default function App() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [quickOptions, setQuickOptions] = useState<string[]>(['觀察四周', '檢查自己', '大聲求助']);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -278,6 +275,114 @@ export default function App() {
     ));
   };
 
+  // ─── 🔮 水晶球日記：AI 自動生成 ────────────────────────────────────────────
+  const handleGenerateDiary = async () => {
+    const key = geminiApiKey.trim() || process.env.GEMINI_API_KEY || '';
+    if (!key) { showToast('❌ 請先設定 Gemini API Key'); return; }
+    setIsDiaryGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      const recentChat = messages.slice(-20).map(m =>
+        `${m.role === 'user' ? 'Player' : 'DM'}: ${m.text}`
+      ).join('\n');
+
+      const prompt = `你是一個 RPG 遊戲的日記助手。根據以下最近的對話紀錄，生成一則第一人稱的日記條目，格式如下：
+
+## [日記標題]
+- 摘要範圍：最近 20 則對話
+關鍵事件節點：
+- 事件名稱：簡潔描述事件結果
+（1-4個關鍵節點）
+詳細內容：
+按時間順序詳述事件發展，包含重要對話、行動、心理活動。
+可進行故事路線：
+- 故事主線
+- 故事支線
+
+## 必須記錄的要點
+### 角色層面
+- 主角變化、角色關係進展、重要新角色登場
+### 情節層面
+- 推動主線的重大事件、重要伏筆和線索
+### 世界觀層面
+- 新設定、關鍵道具、地點
+### 情感層面
+- 情感轉折點、重要互動細節
+
+## 寫作要求
+- 簡潔明瞭，重點突出
+- 使用「引號」標記重要對話和專有名詞
+- 禁止使用**粗體**
+- 使用繁體中文，第一人稱
+
+---
+最近對話：
+${recentChat}
+
+請直接輸出日記內容，不要加任何前綴說明。`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+      });
+
+      const text = response.text || '';
+      const newId = Date.now();
+      setDiaryEntries(prev => [{
+        id: newId,
+        text: text.trim(),
+        isActive: false,
+        keywords: [],
+        source: 'ai_generated',
+      }, ...prev]);
+      showToast('🔮 水晶球日記已生成');
+    } catch (e) {
+      showToast('❌ 生成失敗，請稍後再試');
+    } finally {
+      setIsDiaryGenerating(false);
+    }
+  };
+
+  // ─── 💫 融合日記：合併多條日記 ─────────────────────────────────────────────
+  const handleMergeDiary = async () => {
+    if (diaryMergeSelection.length < 2) { showToast('請勾選至少 2 條日記'); return; }
+    const key = geminiApiKey.trim() || process.env.GEMINI_API_KEY || '';
+    if (!key) { showToast('❌ 請先設定 Gemini API Key'); return; }
+    const selected = diaryEntries.filter(e => diaryMergeSelection.includes(e.id));
+    const combined = selected.map((e, i) => `[日記 ${i + 1}]\n${e.text}`).join('\n\n---\n\n');
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      const prompt = `請將以下多則日記合併成一則，保留所有關鍵資訊，去除重複內容，使用繁體中文，第一人稱，標題前加上 💫。格式與原始日記相同。\n\n${combined}`;
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: prompt,
+      });
+      const text = response.text || '';
+      const newId = Date.now();
+      const sourceIds = diaryMergeSelection.slice();
+      setDiaryEntries(prev => [
+        {
+          id: newId,
+          text: text.trim(),
+          isActive: false,
+          keywords: [],
+          source: 'merged',
+          mergedFrom: sourceIds,
+        },
+        ...prev.map(e =>
+          sourceIds.includes(e.id)
+            ? { ...e, isActive: false, isMerged: true }
+            : e
+        )
+      ]);
+      setDiaryMergeSelection([]);
+      setIsDiaryMergeMode(false);
+      showToast('💫 融合日記已生成');
+    } catch (e) {
+      showToast('❌ 融合失敗，請稍後再試');
+    }
+  };
+
   const handleDiaryChange = (id: number, text: string) => {
     setDiaryEntries(diaryEntries.map(entry => 
       entry.id === id ? { ...entry, text } : entry
@@ -327,13 +432,13 @@ export default function App() {
   };
 
   const handleQuickSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, contextSize };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions };
     localStorage.setItem('rpworld_save', JSON.stringify(saveData));
     showToast('已快速存檔');
   };
 
   const handleExportSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, contextSize };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -364,10 +469,6 @@ export default function App() {
         if (saveData.consumables) setConsumables(saveData.consumables);
         if (saveData.currentLocation) setCurrentLocation(saveData.currentLocation);
         if (saveData.messages) setMessages(saveData.messages);
-        if (saveData.contextSize) {
-          setContextSize(saveData.contextSize);
-          localStorage.setItem('context_size', saveData.contextSize.toString());
-        }
         if (saveData.memories) {
           setMemories(saveData.memories);
         } else {
@@ -402,6 +503,7 @@ export default function App() {
           });
           if (migrated.length > 0) setMemories(migrated);
         }
+        if (saveData.quickOptions) setQuickOptions(saveData.quickOptions);
         showToast('存檔已匯入');
         setIsSettingsModalOpen(false);
       } catch (error) {
@@ -498,8 +600,8 @@ export default function App() {
   // AI 回應格式：<<COMMANDS>>...<</COMMANDS>> 裡的指令由前端執行，不顯示給玩家
   //
   // 支援指令：
-  //   HP:+10 / HP:-15          → 增減 HP（自動 clamp 在 0~maxHp）
-  //   MP:+5  / MP:-10          → 增減 MP（自動 clamp 在 0~maxMp）
+  //   HP:+10 / HP:-15          → 增減 HP（無上限，最低為 0）
+  //   MP:+5  / MP:-10          → 增減 MP（無上限，最低為 0）
   //   GOLD:+200 / GOLD:-50     → 增減金幣
   //   AFFINITY:角色名:+10       → 更新 NPC 好感度（自動 clamp 在 -100~100）
   //   LOCATION:新地點           → 移動玩家位置
@@ -509,14 +611,38 @@ export default function App() {
   //   MEMORY_ADD:類型:內容:標籤  → 自動新增記憶（類型: world/region/scene/npc）
 
   const parseAndExecuteCommands = (rawText: string): string => {
-    const commandBlockRegex = /<<COMMANDS>>([\s\S]*?)<<\/COMMANDS>>/gi;
+    const commandBlockRegex = /<<COMMANDS>>([\s\S]*?)(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi;
+    const optionsBlockRegex = /<<OPTIONS>>([\s\S]*?)(?:<<\/OPTIONS>>|<\/OPTIONS>>|<\/OPTIONS>|$)/gi;
     let narrative = rawText;
     let commandsFound = false;
+    let optionsFound = false;
+
+    // 收集所有選項區塊
+    const allOptions: string[] = [];
+    let optMatch;
+    while ((optMatch = optionsBlockRegex.exec(narrative)) !== null) {
+      optionsFound = true;
+      const lines = optMatch[1]
+        .split('\n')
+        .map(l => l.replace(/^[\d\.\-\*\s]+/, '').trim())
+        .filter(Boolean);
+      allOptions.push(...lines);
+    }
+    if (optionsFound) {
+      narrative = narrative.replace(/<<OPTIONS>>[\s\S]*?(?:<<\/OPTIONS>>|<\/OPTIONS>>|<\/OPTIONS>|$)/gi, '').trim();
+      if (allOptions.length > 0) {
+        setQuickOptions(allOptions);
+      } else {
+        setQuickOptions(['觀察四周', '檢查自己', '大聲求助']);
+      }
+    } else {
+      setQuickOptions(['觀察四周', '檢查自己', '大聲求助']);
+    }
 
     // 收集所有指令區塊
     const allCommands: string[] = [];
     let match;
-    while ((match = commandBlockRegex.exec(rawText)) !== null) {
+    while ((match = commandBlockRegex.exec(narrative)) !== null) {
       commandsFound = true;
       const lines = match[1].split('\n').map(l => l.trim()).filter(Boolean);
       allCommands.push(...lines);
@@ -524,7 +650,7 @@ export default function App() {
 
     // 從顯示文字中移除指令區塊
     if (commandsFound) {
-      narrative = rawText.replace(/<<COMMANDS>>[\s\S]*?<<\/COMMANDS>>/gi, '').trim();
+      narrative = narrative.replace(/<<COMMANDS>>[\s\S]*?(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi, '').trim();
     }
 
     if (allCommands.length === 0) return narrative;
@@ -689,7 +815,7 @@ export default function App() {
     // 批次更新數值
     if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
       setProfile(prev => {
-        const newHp = Math.max(0, prev.hp + hpDelta);  // 無上限，升級後可超過初始maxHp
+        const newHp = Math.max(0, prev.hp + hpDelta);  // 無上限
         const newMp = Math.max(0, prev.mp + mpDelta);  // 無上限
         const newGold = Math.max(0, prev.gold + goldDelta);
 
@@ -798,12 +924,12 @@ export default function App() {
   };
 
   // ─── Prompt 組裝（只注入當前地點相關內容）────────────────────────────────────
-  const buildPrompt = (userInput: string): string => {
+  const buildPrompt = (userInput: string, currentMessages: any[]): string => {
     const SLIDING_WINDOW = 20; // 只送最近 20 則對話
 
     // Lorebook：只注入與當前地點相關，或沒有地點限制的條目
     // ── Lorebook 觸發判斷（支援 AND 邏輯 + insertion_order 排序）──────────────
-    const lorebookScanText = messages.slice(-5).map(m => m.text).join(' ') + ' ' + userInput;
+    const lorebookScanText = currentMessages.slice(-5).map(m => m.text).join(' ') + ' ' + userInput;
 
     const lorebookHitsKeywords = (e: any): boolean => {
       const keys: string[] = e.keywords || [];
@@ -855,7 +981,7 @@ export default function App() {
     const pinnedNpcs = npcs.filter(n => n.isPinned);
 
     // 滑動窗口：只取最近 N 則
-    const recentMessages = messages.slice(-SLIDING_WINDOW);
+    const recentMessages = currentMessages.slice(-SLIDING_WINDOW);
 
     return `[System Context]
 World Premise: ${systemPrompt.worldPremise}
@@ -872,7 +998,7 @@ ${profile.other ? `Other: ${profile.other}` : ''}
 [Current State]
 Location: ${currentLocation}
 Time: ${timeState.year}年${timeState.month}月${timeState.day}日 ${String(timeState.hour).padStart(2,'0')}:${String(timeState.minute).padStart(2,'0')} | Weather: ${timeState.weather}
-HP: ${profile.hp}/${profile.maxHp} | MP: ${profile.mp}/${profile.maxMp} | Gold: ${profile.gold}
+HP: ${profile.hp} | MP: ${profile.mp} | Gold: ${profile.gold}
 
 [Inventory]
 ${inventory.length > 0 ? inventory.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : '（空）'}
@@ -940,17 +1066,25 @@ MEMORY_ADD:scene:normal:酒館因打架暫時關閉:locations=酒館
 MEMORY_ADD:npc:normal:芬里爾透露停火協議內容:npcs=芬里爾:keywords=停火,協議
 MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 <</COMMANDS>>
+若需要提供玩家行動建議，請在回應最後面輸出選項區塊，格式如下（請不要加上數字編號，限制在10字以內，以簡單動作為主）：
+<<OPTIONS>>
+選項一
+選項二
+選項三
+<</OPTIONS>>
 指令區塊之後才是給玩家看的敘事內容。若無數值變化則省略指令區塊。
 
 Please respond as the DM.`;
   };
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+  const handleSendMessage = async (textToUse?: string | React.MouseEvent | React.KeyboardEvent, historyToUse?: any[]) => {
+    const text = typeof textToUse === 'string' ? textToUse : inputText;
+    if (!text.trim() || isLoading) return;
 
-    const userMessage = { id: Date.now(), role: 'user', text: inputText };
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
+    const userMessage = { id: Date.now(), role: 'user', text: text };
+    const newMessages = historyToUse ? [...historyToUse, userMessage] : [...messages, userMessage];
+    setMessages(newMessages);
+    if (typeof textToUse !== 'string') setInputText('');
     setIsLoading(true);
 
     try {
@@ -961,7 +1095,7 @@ Please respond as the DM.`;
         return;
       }
       const ai = new GoogleGenAI({ apiKey: key });
-      const prompt = buildPrompt(inputText);
+      const prompt = buildPrompt(text, historyToUse || messages);
 
       const response = await ai.models.generateContentStream({
         model: 'gemini-2.0-flash',
@@ -1001,6 +1135,27 @@ Please respond as the DM.`;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRegenerate = (msgId: number) => {
+    if (isLoading) return;
+    const msgIndex = messages.findIndex(m => m.id === msgId);
+    if (msgIndex === -1) return;
+
+    let lastUserMsgIndex = -1;
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMsgIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMsgIndex === -1) return;
+
+    const userMsgText = messages[lastUserMsgIndex].text;
+    const historyToUse = messages.slice(0, lastUserMsgIndex);
+    
+    handleSendMessage(userMsgText, historyToUse);
   };
 
   return (
@@ -1270,7 +1425,12 @@ Please respond as the DM.`;
                   </span>
                   <div className={`flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition ${activeMenuId === msg.id ? 'opacity-100' : ''}`}>
                     {msg.role !== 'user' && (
-                      <button className="p-1 text-stone-500 hover:text-stone-300 rounded transition" title="重新生成">
+                      <button 
+                        onClick={() => handleRegenerate(msg.id)}
+                        disabled={isLoading}
+                        className="p-1 text-stone-500 hover:text-stone-300 rounded transition disabled:opacity-50 disabled:cursor-not-allowed" 
+                        title="重新生成"
+                      >
                         <RefreshCw className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1340,8 +1500,7 @@ Please respond as the DM.`;
                       <textarea 
                         value={editMessageText} 
                         onChange={(e) => setEditMessageText(e.target.value)}
-                        className="w-full bg-stone-900/50 backdrop-blur-sm text-stone-200 p-3 rounded-2xl border border-white/10 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none resize-none text-sm"
-                        rows={3}
+                        className="w-full bg-stone-900/50 backdrop-blur-sm text-stone-200 p-3 rounded-2xl border border-white/10 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none resize-none text-sm min-h-[200px]"
                         autoFocus
                       />
                       <div className="flex justify-end space-x-2 mt-2">
@@ -1373,12 +1532,22 @@ Please respond as the DM.`;
           </div>
 
           {/* Input Area */}
-          <div className="absolute bottom-0 w-full bg-gradient-to-t from-stone-950/90 via-stone-950/60 to-transparent pt-10 pb-4 px-6 flex flex-col items-center backdrop-blur-[2px]">
+          <div className="absolute bottom-0 w-full pt-10 pb-4 px-6 flex flex-col items-center z-30">
+            {/* Fading glassmorphism background */}
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/60 to-transparent backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)] pointer-events-none -z-10"></div>
+            
             <div className="w-full max-w-3xl">
               <div className="flex space-x-2 mb-3">
-                <button className="px-3 py-1 bg-stone-800/60 backdrop-blur-sm hover:bg-stone-700/80 border border-white/10 rounded-full text-xs text-stone-300 transition shadow-[0_0_10px_rgba(0,0,0,0.2)]">觀察四周</button>
-                <button className="px-3 py-1 bg-stone-800/60 backdrop-blur-sm hover:bg-stone-700/80 border border-white/10 rounded-full text-xs text-stone-300 transition shadow-[0_0_10px_rgba(0,0,0,0.2)]">檢查自己</button>
-                <button className="px-3 py-1 bg-stone-800/60 backdrop-blur-sm hover:bg-stone-700/80 border border-white/10 rounded-full text-xs text-stone-300 transition shadow-[0_0_10px_rgba(0,0,0,0.2)]">大聲求助</button>
+                {quickOptions.map((option, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => handleSendMessage(option)}
+                    disabled={isLoading}
+                    className="px-3 py-1 bg-stone-800/60 backdrop-blur-sm hover:bg-stone-700/80 border border-white/10 rounded-full text-xs text-stone-300 transition shadow-[0_0_10px_rgba(0,0,0,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {option}
+                  </button>
+                ))}
               </div>
               <div className="flex items-end bg-stone-800/50 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.05)] focus-within:shadow-[0_0_20px_rgba(99,102,241,0.2)] focus-within:border-indigo-500/50 transition-all">
                 <textarea 
@@ -1425,8 +1594,8 @@ Please respond as the DM.`;
                   <span className="flex items-center"><MapPin className="w-3.5 h-3.5 mr-1.5" /> {currentLocation}</span>
                 </div>
                 <div className="flex items-center space-x-4">
-                  <span className="flex items-center text-rose-400"><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> HP {profile.hp}/{profile.maxHp}</span>
-                  <span className="flex items-center text-blue-400"><Zap className="w-3.5 h-3.5 mr-1.5 fill-current" /> MP {profile.mp}/{profile.maxMp}</span>
+                  <span className="flex items-center text-rose-400"><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> HP {profile.hp}</span>
+                  <span className="flex items-center text-blue-400"><Zap className="w-3.5 h-3.5 mr-1.5 fill-current" /> MP {profile.mp}</span>
                   <span className="flex items-center text-stone-300"><Shield className="w-3.5 h-3.5 mr-1.5" /> {profile.job}</span>
                   <span className="flex items-center text-amber-400"><Coins className="w-3.5 h-3.5 mr-1.5" /> {profile.gold.toLocaleString()} G</span>
                 </div>
@@ -1643,6 +1812,7 @@ Please respond as the DM.`;
                   type="text" 
                   value={profile.name}
                   onChange={(e) => setProfile({...profile, name: e.target.value})}
+                  placeholder="未知"
                   className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
                 />
               </div>
@@ -1652,6 +1822,7 @@ Please respond as the DM.`;
                   type="text" 
                   value={profile.job}
                   onChange={(e) => setProfile({...profile, job: e.target.value})}
+                  placeholder="例如：異鄉人、劍士、魔法師"
                   className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
                 />
               </div>
@@ -1660,6 +1831,7 @@ Please respond as the DM.`;
                 <textarea 
                   value={profile.appearance}
                   onChange={(e) => setProfile({...profile, appearance: e.target.value})}
+                  placeholder="例如：性別、年齡、穿著。"
                   className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
                 />
               </div>
@@ -1668,6 +1840,7 @@ Please respond as the DM.`;
                 <textarea 
                   value={profile.personality}
                   onChange={(e) => setProfile({...profile, personality: e.target.value})}
+                  placeholder="例如：務實、謹慎、對陌生人抱有戒心。"
                   className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
                 />
               </div>
@@ -1676,6 +1849,7 @@ Please respond as the DM.`;
                 <textarea 
                   value={profile.other}
                   onChange={(e) => setProfile({...profile, other: e.target.value})}
+                  placeholder="例如：喜惡、習慣。"
                   className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
                 />
               </div>
@@ -1710,25 +1884,107 @@ Please respond as the DM.`;
               </button>
             </div>
             
-            <div className="p-4 border-b border-white/5 bg-stone-900/30">
-              <button 
+            <div className="p-4 border-b border-white/5 bg-stone-900/30 flex gap-2">
+              {/* 📝 新增日記 */}
+              <button
                 onClick={handleAddDiary}
-                className="w-full bg-stone-800/40 backdrop-blur-sm hover:bg-stone-700/50 border border-white/10 hover:border-white/20 text-stone-200 py-3 rounded-2xl flex items-center justify-center transition border-dashed"
+                className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-stone-800/40 hover:bg-stone-700/50 border border-white/10 hover:border-white/20 transition"
               >
-                <Plus className="w-4 h-4 mr-2" /> 新增日記條目
+                <span className="text-lg">📝</span>
+                <span className="text-[10px] text-stone-400">新增日記</span>
+              </button>
+
+              {/* 🔮 水晶球日記 */}
+              <button
+                onClick={handleGenerateDiary}
+                disabled={isDiaryGenerating}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border transition ${isDiaryGenerating ? 'opacity-50 cursor-not-allowed bg-stone-800/40 border-white/10' : 'bg-purple-900/20 hover:bg-purple-900/40 border-purple-500/30 hover:border-purple-400/50'}`}
+              >
+                <span className={`text-lg ${isDiaryGenerating ? 'animate-spin' : ''}`}>{isDiaryGenerating ? '⏳' : '🔮'}</span>
+                <span className="text-[10px] text-purple-300">水晶球日記</span>
+              </button>
+
+              {/* 💫 融合日記 */}
+              <button
+                onClick={() => {
+                  if (isDiaryMergeMode) {
+                    setIsDiaryMergeMode(false);
+                    setDiaryMergeSelection([]);
+                  } else {
+                    setIsDiaryMergeMode(true);
+                  }
+                }}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border transition ${isDiaryMergeMode ? 'bg-amber-900/40 border-amber-500/50' : 'bg-stone-800/40 hover:bg-amber-900/20 border-white/10 hover:border-amber-500/30'}`}
+              >
+                <span className="text-lg">💫</span>
+                <span className={`text-[10px] ${isDiaryMergeMode ? 'text-amber-300' : 'text-stone-400'}`}>融合日記</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {diaryEntries.map(entry => (
-                <div key={entry.id} className={`bg-stone-900/50 backdrop-blur-sm border ${entry.isActive ? 'border-amber-500/50' : 'border-white/5'} rounded-2xl p-3 flex gap-3 transition-colors`}>
-                  <button 
-                    onClick={() => handleToggleDiary(entry.id)}
-                    className={`mt-1 flex-shrink-0 ${entry.isActive ? 'text-amber-400' : 'text-stone-500 hover:text-stone-400'}`}
-                    title={entry.isActive ? "AI 將會讀取此記憶" : "AI 不會讀取此記憶"}
+            {/* 融合模式：確認 / 取消列 */}
+            {isDiaryMergeMode && (
+              <div className="px-4 pb-3 flex items-center justify-between bg-stone-900/30 border-b border-white/5">
+                <span className="text-xs text-stone-400">
+                  已選 {diaryMergeSelection.length} 條{diaryMergeSelection.length >= 2 ? '，可融合' : '，請選 2 條以上'}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setIsDiaryMergeMode(false); setDiaryMergeSelection([]); }}
+                    className="text-xs px-3 py-1.5 rounded-xl bg-stone-800/60 border border-white/10 text-stone-300 hover:bg-stone-700/60 transition"
                   >
-                    {entry.isActive ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    取消
                   </button>
+                  <button
+                    onClick={handleMergeDiary}
+                    disabled={diaryMergeSelection.length < 2}
+                    className={`text-xs px-3 py-1.5 rounded-xl transition ${diaryMergeSelection.length >= 2 ? 'bg-amber-600/80 hover:bg-amber-500/80 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'bg-stone-800/40 text-stone-600 cursor-not-allowed border border-white/5'}`}
+                  >
+                    💫 確認融合
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {diaryEntries.map(entry => {
+                // 融合日記：展開顯示來源
+                const isMergedEntry = entry.source === 'merged' && entry.mergedFrom?.length > 0;
+                const isExpanded = expandedMergedIds.includes(entry.id);
+                const sourceDiaries = isMergedEntry
+                  ? diaryEntries.filter(e => entry.mergedFrom.includes(e.id))
+                  : [];
+
+                return (
+                <React.Fragment key={entry.id}>
+                <div className={`bg-stone-900/50 backdrop-blur-sm border rounded-2xl p-3 flex gap-3 transition-colors ${
+                  entry.isMerged ? 'opacity-40 border-white/5' :
+                  entry.source === 'merged' ? 'border-amber-500/30' :
+                  entry.isActive ? 'border-amber-500/50' : 'border-white/5'
+                }`}>
+                  {/* isActive 勾選（左上）*/}
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <button 
+                      onClick={() => handleToggleDiary(entry.id)}
+                      className={`${entry.isActive ? 'text-amber-400' : 'text-stone-500 hover:text-stone-400'}`}
+                      title={entry.isActive ? "AI 將會讀取此記憶" : "AI 不會讀取此記憶"}
+                    >
+                      {entry.isActive ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </button>
+                    {/* 融合模式勾選（左下）*/}
+                    {isDiaryMergeMode && !entry.isMerged && (
+                      <button
+                        onClick={() => setDiaryMergeSelection(prev =>
+                          prev.includes(entry.id)
+                            ? prev.filter(id => id !== entry.id)
+                            : [...prev, entry.id]
+                        )}
+                        className={`${diaryMergeSelection.includes(entry.id) ? 'text-amber-400' : 'text-stone-600 hover:text-stone-400'}`}
+                        title="選取以融合"
+                      >
+                        {diaryMergeSelection.includes(entry.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </div>
                   
                   <div className="flex-1 flex flex-col">
                     {editingDiaryId === entry.id ? (
@@ -1818,15 +2074,44 @@ Please respond as the DM.`;
                     )}
                   </div>
                   
-                  <button 
-                    onClick={() => handleDeleteDiary(entry.id)}
-                    className="flex-shrink-0 text-stone-500 hover:text-rose-400 transition self-start mt-1"
-                    title="刪除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex flex-col gap-1 flex-shrink-0">
+                    {/* isMerged 標記 */}
+                    {entry.isMerged && (
+                      <span className="text-[9px] text-stone-500 px-1">已融合</span>
+                    )}
+                    {/* 融合日記展開按鈕 */}
+                    {isMergedEntry && (
+                      <button
+                        onClick={() => setExpandedMergedIds(prev =>
+                          prev.includes(entry.id)
+                            ? prev.filter(id => id !== entry.id)
+                            : [...prev, entry.id]
+                        )}
+                        className="text-amber-400 hover:text-amber-300 transition"
+                        title={isExpanded ? "收合來源" : "展開來源"}
+                      >
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => handleDeleteDiary(entry.id)}
+                      className="text-stone-500 hover:text-rose-400 transition"
+                      title="刪除"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              ))}
+
+                {/* 融合來源展開列表 */}
+                {isMergedEntry && isExpanded && sourceDiaries.map(src => (
+                  <div key={src.id} className="ml-8 bg-stone-900/30 border border-white/5 rounded-xl p-3 text-xs text-stone-500 whitespace-pre-wrap">
+                    {src.text || <span className="italic">（空白）</span>}
+                  </div>
+                ))}
+                </React.Fragment>
+                );
+              })}
               
               {diaryEntries.length === 0 && (
                 <div className="text-center text-stone-500 py-10">
@@ -2386,38 +2671,6 @@ Please respond as the DM.`;
                 <p className="text-[11px] text-stone-600 leading-relaxed">
                   儲存在本機瀏覽器，不會上傳。取得方式：<br/>
                   <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline transition">aistudio.google.com</a>
-                </p>
-              </div>
-
-              {/* Context Size 選擇 */}
-              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-3">
-                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center justify-between">
-                  <span className="flex items-center gap-2"><span>🧠</span> 記憶體容量 (Context Size)</span>
-                  <span className="text-indigo-400 font-mono">{contextSize}K</span>
-                </label>
-                <div className="px-2">
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="1"
-                    value={contextSize === 16 ? 1 : contextSize === 32 ? 2 : 3}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      const mapped = val === 1 ? 16 : val === 2 ? 32 : 64;
-                      setContextSize(mapped);
-                      localStorage.setItem('context_size', mapped.toString());
-                    }}
-                    className="w-full accent-indigo-500"
-                  />
-                  <div className="flex justify-between text-[10px] text-stone-500 mt-1 font-mono">
-                    <span>16K</span>
-                    <span>32K</span>
-                    <span>64K</span>
-                  </div>
-                </div>
-                <p className="text-[11px] text-stone-600 leading-relaxed">
-                  數值越大，AI 能記住的歷史對話越多，但會消耗更多 Token。
                 </p>
               </div>
 
