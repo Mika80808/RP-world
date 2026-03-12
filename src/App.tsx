@@ -91,16 +91,16 @@ export default function App() {
   const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
 
   const [profile, setProfile] = useState({
-    name: '亞瑟',
-    job: '劍士',
-    appearance: '黑髮黑眼，身穿舊皮甲，背著一把鐵劍。',
-    personality: '冷靜、謹慎，對陌生人抱有戒心。',
-    other: '正在尋找失散的妹妹。',
-    hp: 50,
+    name: '',
+    job: '',
+    appearance: '',
+    personality: '',
+    other: '',
+    hp: 100,
     maxHp: 100,
     mp: 50,
     maxMp: 50,
-    gold: 1250
+    gold: 0
   });
 
   const [systemPrompt, setSystemPrompt] = useState({
@@ -850,9 +850,9 @@ Writing Style: ${systemPrompt.writingStyle}
 
 ---
 [Player]
-Name: ${profile.name} | Job: ${profile.job}
-Appearance: ${profile.appearance}
-Personality: ${profile.personality}
+Name: ${profile.name || '未知'} | Job: ${profile.job || '未知'}
+Appearance: ${profile.appearance || '未知'}
+Personality: ${profile.personality || '未知'}
 ${profile.other ? `Other: ${profile.other}` : ''}
 
 [Current State]
@@ -1246,7 +1246,7 @@ Please respond as the DM.`;
                 {/* Header: Name and Actions */}
                 <div className={`flex items-center space-x-2 mb-1 ${msg.role === 'user' ? 'mr-2 flex-row-reverse space-x-reverse' : 'ml-2'}`}>
                   <span className="text-xs text-stone-500 font-bold">
-                    {msg.role === 'user' ? profile.name : '異世界'}
+                    {msg.role === 'user' ? (profile.name || '玩家') : '異世界'}
                   </span>
                   <div className={`flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition ${activeMenuId === msg.id ? 'opacity-100' : ''}`}>
                     {msg.role !== 'user' && (
@@ -1407,7 +1407,7 @@ Please respond as the DM.`;
                 <div className="flex items-center space-x-4">
                   <span className="flex items-center text-rose-400"><Heart className="w-3.5 h-3.5 mr-1.5 fill-current" /> HP {profile.hp}/{profile.maxHp}</span>
                   <span className="flex items-center text-blue-400"><Zap className="w-3.5 h-3.5 mr-1.5 fill-current" /> MP {profile.mp}/{profile.maxMp}</span>
-                  <span className="flex items-center text-stone-300"><Shield className="w-3.5 h-3.5 mr-1.5" /> {profile.job}</span>
+                  <span className="flex items-center text-stone-300"><Shield className="w-3.5 h-3.5 mr-1.5" /> {profile.job || '無職業'}</span>
                   <span className="flex items-center text-amber-400"><Coins className="w-3.5 h-3.5 mr-1.5" /> {profile.gold.toLocaleString()} G</span>
                 </div>
               </div>
