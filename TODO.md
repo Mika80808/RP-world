@@ -87,3 +87,9 @@
 
 - [x] **GitHub repo + sync.ps1**
   2026-03-12 Claude: `sync.ps1` 放 repo 根目錄，自動抓 Downloads 最新 zip 並 push。
+
+- [x] **MaxTokens 輸出長度設定**
+  2026-03-13 Claude: 新增 `TOKEN_OPTIONS` 常數（16K/32K/64K）、`maxTokens` state（預設 32768，儲存至 `localStorage('gemini_max_tokens')`）。三個 API 呼叫（`handleSendMessage` / `handleGenerateDiary` / `handleMergeDiary`）均加入 `config: { maxOutputTokens: maxTokens }`。系統設定 Modal 新增切換按鈕 UI。
+
+- [x] **清除 Lorebook 預設 NPC 資料**
+  2026-03-13 Claude: 移除 `lorebookEntries` 初始陣列中全部 21 筆 NPC 資料（id 18–39，芬里爾至魔王）。地點資料不動。

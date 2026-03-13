@@ -5,6 +5,16 @@
 
 ---
 
+## [2026-03-13] v6（當前版本）
+
+### MaxTokens 輸出長度設定
+在系統設定 Modal 新增 16K / 32K / 64K 三段切換按鈕，控制 Gemini API 的 `maxOutputTokens`。選擇儲存至 `localStorage('gemini_max_tokens')`，預設 32K。三個 API 呼叫（串流對話、水晶球日記、融合日記）均套用此設定。
+
+### 清除 Lorebook 預設 NPC 資料
+移除 `lorebookEntries` 初始陣列中全部 21 筆 NPC 資料（芬里爾至魔王，id 18–39）。地點 14 筆保留不動。新遊戲／重置後 NPC 設定集為空白，由玩家自行填入。
+
+---
+
 ## [2026-03-12] v4（當前版本）
 
 ### 統一記憶資料結構（重大架構變更）
