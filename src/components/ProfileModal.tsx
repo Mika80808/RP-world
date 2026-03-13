@@ -10,6 +10,7 @@ export interface Profile {
   hp: number;
   mp: number;
   gold: number;
+  status?: string;
 }
 
 interface ProfileModalProps {

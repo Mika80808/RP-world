@@ -510,6 +510,29 @@ ${recentChat}
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // ─── 消耗品 effect 套用 ──────────────────────────────────────────────────────
+  const applyItemEffect = (itemName: string): boolean => {
+    const item = consumables.find(i => i.name === itemName);
+    if (!item) return false;
+    const effect = item.effect || {};
+    const parts: string[] = [];
+    setProfile(prev => {
+      const next = { ...prev };
+      if (effect.hp) { next.hp = prev.hp + effect.hp; parts.push(`HP ${effect.hp > 0 ? '+' : ''}${effect.hp}`); }
+      if (effect.mp) { next.mp = prev.mp + effect.mp; parts.push(`MP ${effect.mp > 0 ? '+' : ''}${effect.mp}`); }
+      if (effect.gold) { next.gold = prev.gold + effect.gold; parts.push(`Gold ${effect.gold > 0 ? '+' : ''}${effect.gold}`); }
+      if (effect.status) { next.status = effect.status; parts.push(`狀態：${effect.status}`); }
+      return next;
+    });
+    setConsumables(prev =>
+      prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity - 1 } : i)
+         .filter(i => i.quantity > 0)
+    );
+    const effectDesc = parts.length > 0 ? `：${parts.join('、')}` : '';
+    showToast(`🧪 使用 ${itemName}${effectDesc}`);
+    return true;
+  };
+
   // 每次 AI 回應結束後自動存檔
   useEffect(() => {
     if (!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant') {
@@ -805,17 +828,44 @@ ${recentChat}
         continue;
       }
 
-      const itemAddMatch = cmd.match(/^ITEM_ADD:(.+):(\d+):?(.*)$/i);
-      if (itemAddMatch) {
-        const [, name, qty, desc] = itemAddMatch;
-        setInventory(prev => {
-          const exists = prev.find(i => i.name === name.trim());
-          if (exists) {
-            return prev.map(i => i.name === name.trim() ? { ...i, quantity: i.quantity + parseInt(qty) } : i);
+      if (cmd.toUpperCase().startsWith('ITEM_ADD:')) {
+        const rawParts = cmd.slice('ITEM_ADD:'.length).split(':');
+        const itemName = rawParts[0]?.trim() || '';
+        const qty = parseInt(rawParts[1] || '1') || 1;
+        // Separate description segments from effect key=value pairs
+        const EFFECT_KEYS = /^(hp|mp|gold|status)=/i;
+        const descParts: string[] = [];
+        const effectMap: Record<string, string> = {};
+        for (let pi = 2; pi < rawParts.length; pi++) {
+          if (EFFECT_KEYS.test(rawParts[pi])) {
+            const eqIdx = rawParts[pi].indexOf('=');
+            effectMap[rawParts[pi].slice(0, eqIdx).toLowerCase()] = rawParts[pi].slice(eqIdx + 1);
+          } else {
+            descParts.push(rawParts[pi]);
           }
-          return [...prev, { id: Date.now(), name: name.trim(), quantity: parseInt(qty), description: desc?.trim() || '' }];
-        });
-        toastQueue.push(`🎒 獲得 ${name.trim()} x${qty}`);
+        }
+        const desc = descParts.join(':').trim();
+        const hasEffect = Object.keys(effectMap).length > 0;
+        const effect: { hp?: number; mp?: number; gold?: number; status?: string } = {};
+        if (effectMap.hp) effect.hp = parseInt(effectMap.hp);
+        if (effectMap.mp) effect.mp = parseInt(effectMap.mp);
+        if (effectMap.gold) effect.gold = parseInt(effectMap.gold);
+        if (effectMap.status) effect.status = effectMap.status;
+        if (hasEffect) {
+          // Route to consumables
+          setConsumables(prev => {
+            const exists = prev.find(i => i.name === itemName);
+            if (exists) return prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity + qty } : i);
+            return [...prev, { id: Date.now(), name: itemName, quantity: qty, description: desc, effect }];
+          });
+        } else {
+          setInventory(prev => {
+            const exists = prev.find(i => i.name === itemName);
+            if (exists) return prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity + qty } : i);
+            return [...prev, { id: Date.now(), name: itemName, quantity: qty, description: desc }];
+          });
+        }
+        toastQueue.push(`🎒 獲得 ${itemName} x${qty}`);
         continue;
       }
 
@@ -826,6 +876,12 @@ ${recentChat}
           prev.map(i => i.name === name.trim() ? { ...i, quantity: i.quantity - parseInt(qty) } : i)
              .filter(i => i.quantity > 0)
         );
+        continue;
+      }
+
+      const itemUseMatch = cmd.match(/^ITEM_USE:(.+)$/i);
+      if (itemUseMatch) {
+        applyItemEffect(itemUseMatch[1].trim());
         continue;
       }
 
@@ -1246,7 +1302,10 @@ HP: ${profile.hp} | MP: ${profile.mp} | Gold: ${profile.gold}
 
 [Inventory]
 ${inventory.length > 0 ? inventory.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : '（空）'}
-${consumables.length > 0 ? consumables.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : ''}
+${consumables.length > 0 ? consumables.map(i => {
+  const eff = i.effect ? Object.entries(i.effect).map(([k, v]) => `${k}${Number(v) > 0 ? '+' : ''}${v}`).join('/') : '';
+  return `- [消耗品] ${i.name} x${i.quantity}: ${i.description}${eff ? ` (效果: ${eff})` : ''}`;
+}).join('\n') : ''}
 
 [進行中任務]
 ${(() => {
@@ -1331,6 +1390,10 @@ AFFINITY:角色名:+10
 LOCATION:新地點名稱
 TIME:+1h
 ITEM_ADD:道具名:1:說明文字
+ITEM_ADD:草藥:1:回復生命的藥草:hp=20
+ITEM_ADD:魔法藥水:2:恢復魔力:mp=30
+ITEM_ADD:毒藥:1:造成中毒:status=poisoned:hp=-5
+ITEM_USE:道具名
 QUEST_ADD:任務名稱:委託人NPC:目標描述:獎勵金幣:獎勵道具(逗號分隔可留空):期限天數(可留空=無期限)
 QUEST_COMPLETE:任務名稱
 NPC_THOUGHT:角色名:一句話內心想法
@@ -1353,6 +1416,10 @@ MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 
 【AI 何時應輸出 NPC_RELATIONSHIP】
 當玩家與 NPC 初次建立明確關係（如：成為顧客、僱主、同行者、對手），或關係發生重大轉變時（如：從陌生人變成盟友、從朋友變成仇人），輸出一句簡短的關係描述（例如「偶爾光顧的旅行者」「被委託的冒險者」「礙眼的外來者」）。
+
+【AI 何時應輸出 ITEM_ADD / ITEM_USE】
+- ITEM_ADD：當玩家獲得道具時輸出。若道具為消耗品（藥水、食物、卷軸等），請加上 effect 欄位（hp/mp/gold/status=值），前端會自動分類為消耗品欄並套用數值。
+- ITEM_USE：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱，前端會套用 effect 並扣除數量。
 
 【AI 何時應輸出 QUEST_ADD】
 當 NPC 正式委託玩家任務、或玩家從布告欄接取任務時輸出。格式：QUEST_ADD:任務名:委託人:目標描述:獎勵金幣(數字):獎勵道具(逗號分隔,可留空):期限天數(數字,可留空)。任務名稱之後的欄位均可留空。
@@ -1637,23 +1704,13 @@ Please respond as the DM.`;
                             exit={{ height: 0, opacity: 0 }}
                             className="flex space-x-2 mt-2 pt-2 border-t border-stone-700/50 overflow-hidden"
                           >
-                            <button 
+                            <button
                               className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900/50 text-xs py-1 rounded-xl transition"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setConsumables(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity - 1 } : i).filter(i => i.quantity > 0));
-                                
-                                if (item.name === '小紅藥水') {
-                                  setProfile(prev => ({ ...prev, hp: Math.max(0, prev.hp + 30) }));
-                                  setToastMessage(`使用了 ${item.name}，恢復了 30 點 HP`); 
-                                } else if (item.name === '麵包') {
-                                  setProfile(prev => ({ ...prev, hp: Math.max(0, prev.hp + 10) }));
-                                  setToastMessage(`使用了 ${item.name}，恢復了 10 點 HP`); 
-                                } else {
-                                  setToastMessage(`使用了 ${item.name}`); 
-                                }
-                                
-                                setSelectedConsumableItem(null); 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                applyItemEffect(item.name);
+                                setSelectedConsumableItem(null);
+                                handleSendMessage(`（玩家使用了 ${item.name}，效果已套用）`);
                               }}
                             >
                               使用
