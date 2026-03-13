@@ -5,7 +5,32 @@
 
 ---
 
-## [2026-03-13] v6（當前版本）
+## [2026-03-13] v7（當前版本）
+
+### 本機開發環境建立
+安裝 Node.js 與 GitHub CLI（`gh`），設定 `.claude/launch.json` 讓 Claude Code 可直接啟動 Vite dev server（port 3001）並即時預覽。
+
+### 頁面自動載入存檔進度
+所有遊戲 state（profile、messages、memories、currentLocation、timeState 等）改用 lazy initializer，啟動時直接從 `rpworld_save` 讀取，無需手動匯入，重整頁面即還原進度。
+
+### timeState 納入存檔
+快捷存檔、匯出存檔、匯入存檔一併處理遊戲時間（年月日時分天氣），避免重整後時間回到預設值。
+
+### 匯出 / 匯入 Icon 交換
+匯出存檔改用 ↓ Download icon，匯入存檔改用 ↑ Upload icon，語意更直覺。
+
+### 匯出檔名加入玩家名稱
+格式改為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`，特殊字元自動替換為 `_`，方便辨識存檔歸屬。
+
+### Markdown Parser（renderMarkdown）
+新增 `renderMarkdown(text)` 與 `renderInline(text, keyPrefix)` 兩個函數，放在 component 外部。
+處理順序：按 `\n` 切行 → 判斷行類型（`>` 引用、`---` 分隔線、一般段落）→ 行內語法替換（`` `code` ``、`**bold**`、`*italic*`）。
+連續 `>` 行自動合併成同一引用區塊，正確呈現信件格式。
+只有 `msg.role !== 'user'` 時才呼叫 renderMarkdown，玩家訊息維持 `whitespace-pre-wrap`。
+
+---
+
+## [2026-03-13] v6
 
 ### MaxTokens 輸出長度設定
 在系統設定 Modal 新增 16K / 32K / 64K 三段切換按鈕，控制 Gemini API 的 `maxOutputTokens`。選擇儲存至 `localStorage('gemini_max_tokens')`，預設 32K。三個 API 呼叫（串流對話、水晶球日記、融合日記）均套用此設定。
