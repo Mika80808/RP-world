@@ -67,6 +67,7 @@
     - 每則卡片：`border-left: 2px solid rose-400`、背景 `bg-secondary`、想法文字加「」書名號、右下角顯示日期（`M/D`）
     - 無想法時顯示灰色斜體「不知道在想什麼」
   2026-03-13 Gemini: 實作 NPC 角色想法功能，包含資料結構更新、UI 呈現、`NPC_THOUGHT` 指令解析、自動更新上次見面時間地點，以及 Prompt 注入。
+  2026-03-13 Claude: 依新規格更新：`relationship` 改為 AI 生成，新增 `NPC_RELATIONSHIP` 指令解析與 Prompt 說明；NpcModal 標題列改為三行（第二行合併關係 ｜ 好感度）。
 
 - [ ] **更多前端處理項目**
   - 時間系統視覺化（日夜循環 icon / 天空漸層背景）

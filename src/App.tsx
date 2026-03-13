@@ -915,6 +915,17 @@ ${recentChat}
         continue;
       }
 
+      const npcRelationMatch = cmd.match(/^NPC_RELATIONSHIP:(.+):(.+)$/i);
+      if (npcRelationMatch) {
+        const [, name, relation] = npcRelationMatch;
+        setNpcs(prev => prev.map(npc =>
+          (npc.name.includes(name.trim()) || name.trim().includes(npc.name))
+            ? { ...npc, relationship: relation.trim() }
+            : npc
+        ));
+        continue;
+      }
+
       const locDiscoverMatch = cmd.match(/^LOCATION_DISCOVER:(.+)$/i);
       if (locDiscoverMatch) {
         const locName = locDiscoverMatch[1].trim();
@@ -1182,6 +1193,7 @@ ITEM_ADD:道具名:1:說明文字
 QUEST_ADD:任務名稱:任務描述
 QUEST_COMPLETE:任務名稱
 NPC_THOUGHT:角色名:一句話內心想法
+NPC_RELATIONSHIP:角色名:與玩家的關係描述
 LOCATION_DISCOVER:地點名稱
 MEMORY_ADD:region:normal:迷霧森林昨日大火，黑牙氏族前往支援:locations=迷霧森林:factions=黑牙氏族:keywords=大火,火災:sticky=3
 MEMORY_ADD:scene:normal:酒館因打架暫時關閉:locations=酒館
@@ -1191,6 +1203,9 @@ MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 
 【AI 何時應輸出 NPC_THOUGHT】
 當 NPC 有明顯情緒變化、做出重要決定、或對玩家產生新看法時，以第一人稱輸出一句話內心想法。
+
+【AI 何時應輸出 NPC_RELATIONSHIP】
+當玩家與 NPC 初次建立明確關係（如：成為顧客、僱主、同行者、對手），或關係發生重大轉變時（如：從陌生人變成盟友、從朋友變成仇人），輸出一句簡短的關係描述（例如「偶爾光顧的旅行者」「被委託的冒險者」「礙眼的外來者」）。
 
 【AI 何時應輸出 LOCATION_DISCOVER】
 當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點（如路牌、旅人提及、地圖殘片等），輸出 LOCATION_DISCOVER:地點名稱，前端會自動將其標記為「待探索」地點加入世界地圖。
