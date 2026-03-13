@@ -11,6 +11,40 @@
 
 ---
 
+## 💬 待討論／待規劃
+
+- [x] **快速存檔後的紀錄顯示**（bug）
+  存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
+  2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
+
+- [x] **對話框 Markdown 模式**
+  AI 回應支援 render markdown（粗體、斜體、分隔線、顏色）。建議用 `react-markdown`，加開關讓玩家切換。
+  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。同步更新匯出檔名為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`。
+
+- [ ] **Scrollbar 樣式統一**
+  用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有石板/棕色系 UI。
+
+- [ ] **世界地圖視覺化**
+  目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
+
+- [ ] **旅途中發現地點融入故事**
+  AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
+
+- [ ] **多配色主題**
+  用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
+
+- [ ] **NPC「角色想法」欄位**
+  每個 NPC 新增 `thoughts: string[]`（保留最近 5 則）。AI 透過 `NPC_THOUGHT:姓名:一句話` 寫入。Prompt 只注入最近 2–3 則。NPC Modal 顯示想法時間軸。
+
+- [ ] **更多前端處理項目**
+  - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
+  - HP/MP 動態條動畫（數字跳動、條縮短）
+  - 對話 token 用量估算顯示
+  - 道具 `effect` 欄位由前端直接套用數值
+  - 自動存檔（每 N 則對話觸發）
+
+---
+
 ## 🔴 高優先
 
 - [ ] **Prompt 記憶寫入規則**
@@ -87,9 +121,3 @@
 
 - [x] **GitHub repo + sync.ps1**
   2026-03-12 Claude: `sync.ps1` 放 repo 根目錄，自動抓 Downloads 最新 zip 並 push。
-
-- [x] **MaxTokens 輸出長度設定**
-  2026-03-13 Claude: 新增 `TOKEN_OPTIONS` 常數（16K/32K/64K）、`maxTokens` state（預設 32768，儲存至 `localStorage('gemini_max_tokens')`）。三個 API 呼叫（`handleSendMessage` / `handleGenerateDiary` / `handleMergeDiary`）均加入 `config: { maxOutputTokens: maxTokens }`。系統設定 Modal 新增切換按鈕 UI。
-
-- [x] **清除 Lorebook 預設 NPC 資料**
-  2026-03-13 Claude: 移除 `lorebookEntries` 初始陣列中全部 21 筆 NPC 資料（id 18–39，芬里爾至魔王）。地點資料不動。
