@@ -24,11 +24,51 @@
 - [ ] **Scrollbar 樣式統一**
   用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有石板/棕色系 UI。
 
-- [ ] **世界地圖視覺化**
-  目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
+- [ ] **世界地圖視覺化 + 旅行系統**
 
-- [ ] **旅途中發現地點融入故事**
-  AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
+  **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
+  - `mapX: number`、`mapY: number`：節點座標（固定，手動設定，單位為 SVG viewport 內的 px）
+  - `adjacentTo: string[]`：相鄰地點名稱陣列（用於畫連線）
+  - `cartFare: number`：馬車車費（銅幣，0 表示不可搭馬車）
+  - `mapStatus: 'known' | 'discovered' | 'visited'`：解鎖狀態，預設 `'known'`
+
+  **地圖 UI 重寫**（取代現有地圖 Modal 內容）：
+  - 使用 SVG canvas 繪製節點網絡圖
+  - 節點間連線用 **SVG cubic bezier 曲線**（兩端點中間自動偏移產生弧線），細實線或虛線，低透明度
+  - 節點視覺依狀態區分：
+    - 玩家所在地（`currentLocation`）：綠色微發光圓圈
+    - `visited`：正常亮色 icon
+    - `discovered`：半透明 + 問號 icon
+    - `known`：正常顯示
+  - 地圖開啟時自動 highlight 玩家所在節點
+  - **刪除**起點／終點選擇欄位
+  - **刪除**旅行時間欄位
+
+  **點選節點後右欄顯示**：
+  - 地點名稱、content 簡述
+  - 區域記憶：篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱
+  - 行動按鈕（玩家不在該地點時才顯示）：
+    - 「🐴 坐馬車前往」（`cartFare > 0` 時才顯示）
+    - 「🚶 徒步前往」
+
+  **坐馬車邏輯**：
+  ```
+  點擊「坐馬車前往」
+  → 判定 profile.gold >= cartFare
+    → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你搭上馬車，在[地點]附近下車。」
+    → 不足：按鈕下方顯示小字提示「阮囊羞澀」，不執行任何動作
+  ```
+
+  **徒步邏輯**：
+  ```
+  點擊「徒步前往」
+  → 更新 currentLocation
+  → 送出訊息「你決定徒步前往[地點]。」
+  → AI 接手安排旅途事件
+  ```
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - `LOCATION_DISCOVER:地點名:類型:簡述`：將新地點加入 lorebookEntries（category='地點'，mapStatus='discovered'），並 Toast 提示「🗺️ 發現新地點：XX」
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
