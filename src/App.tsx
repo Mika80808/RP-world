@@ -3,6 +3,72 @@ import { Settings, Save, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Pa
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 
+// ─── Markdown Parser ─────────────────────────────────────────────────────────
+
+function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let lastIndex = 0;
+  let match;
+  let keyIdx = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const token = match[0];
+    if (token.startsWith('`')) {
+      parts.push(<span key={`${keyPrefix}-c${keyIdx++}`} className="text-rose-400 font-medium">{token.slice(1, -1)}</span>);
+    } else if (token.startsWith('**')) {
+      parts.push(<strong key={`${keyPrefix}-b${keyIdx++}`}>{token.slice(2, -2)}</strong>);
+    } else {
+      parts.push(<em key={`${keyPrefix}-i${keyIdx++}`} className="text-stone-400">{token.slice(1, -1)}</em>);
+    }
+    lastIndex = match.index + token.length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const result: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // 引用區塊：連續 > 開頭行合併
+    if (line.startsWith('>')) {
+      const quoteLines: string[] = [];
+      const startI = i;
+      while (i < lines.length && lines[i].startsWith('>')) {
+        quoteLines.push(lines[i].replace(/^>\s?/, ''));
+        i++;
+      }
+      result.push(
+        <div key={`bq-${startI}`} className="border-l-2 border-stone-500 pl-3 my-2 bg-stone-800/30 rounded-r-lg py-2 space-y-1">
+          {quoteLines.map((ql, qi) => (
+            <p key={qi} className="text-stone-400 leading-relaxed text-sm">{renderInline(ql, `bq-${startI}-${qi}`)}</p>
+          ))}
+        </div>
+      );
+      continue;
+    }
+    // 分隔線
+    if (line.trim() === '---') {
+      result.push(<hr key={`hr-${i}`} className="border-stone-700/60 my-3" />);
+      i++; continue;
+    }
+    // 空行 → 間距
+    if (line.trim() === '') {
+      result.push(<div key={`sp-${i}`} className="h-2" />);
+      i++; continue;
+    }
+    // 普通段落
+    result.push(<p key={`p-${i}`} className="leading-relaxed">{renderInline(line, `p-${i}`)}</p>);
+    i++;
+  }
+  return <>{result}</>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -472,7 +538,8 @@ ${recentChat}
     const date = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
     const hr = String(now.getHours()).padStart(2,'0');
     const mi = String(now.getMinutes()).padStart(2,'0');
-    a.download = `RP-world-${date}-${hr}-${mi}.json`;
+    const safeName = (profile.name || '玩家').replace(/[\\/:*?"<>|]/g, '_');
+    a.download = `RPworld-${safeName}-${date}-${hr}-${mi}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1499,8 +1566,10 @@ Please respond as the DM.`;
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : msg.role === 'user' ? (
                     <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  ) : (
+                    <div className="leading-relaxed">{renderMarkdown(msg.text)}</div>
                   )}
                 </div>
               </div>
