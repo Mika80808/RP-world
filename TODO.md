@@ -188,7 +188,9 @@
   存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
   2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
 
-- [x] **對話框 Markdown 模式**
-  AI 回應支援 render markdown（粗體、斜體、分隔線、顏色）。建議用 `react-markdown`，加開關讓玩家切換。
-  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。同步更新匯出檔名為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`。
+- [x] **對話框 Markdown 渲染**
+  **功能意義**：AI 回應支援基本 markdown 語法渲染，避免玩家看到裸露的符號，提升閱讀體驗。
+  **套用範圍**：只套用在 `msg.role !== 'user'` 的訊息；玩家訊息維持 `whitespace-pre-wrap` 純文字顯示。
+  **函數**：`renderInline(text, keyPrefix)` 處理行內語法（`` `code` `` 玫紅、`**bold**`、`*italic*` 石板灰）；`renderMarkdown(text)` 處理整段文字（`> ` 引用區塊連續行合併、`---` 分隔線、空行間距、普通段落）。
+  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。引用區塊樣式：`border-l-2 border-stone-500 bg-stone-800/30`；分隔線：`border-stone-700/60`。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。
 
