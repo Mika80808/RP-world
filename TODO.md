@@ -79,7 +79,7 @@
 
 ## 🔴 高優先
 
-- [ ] **App.tsx 組件拆分重構**
+- [x] **App.tsx 組件拆分重構**
 
   **背景**：App.tsx 目前超過 2000 行，未來功能加入後預估達 4000–5000 行。趁功能未爆炸前先拆，降低維護成本與 AI token 消耗。
 
@@ -105,6 +105,7 @@
   - 需要顯示的 state 資料以 props 傳入
   - 需要修改 state 的操作以 callback 函數傳入（例如 `onClose`, `onSave`, `onChange`）
   - 組件內不使用 `useState` 管理業務資料，只允許管理純 UI 狀態（例如搜尋框輸入值、展開折疊）
+  2026-03-13 Claude: 確認所有 8 個 Modal 已獨立於 `src/components/`，App.tsx 只保留 import + `<ComponentName props />` 使用方式，無內嵌 Modal JSX。
 
 - [x] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
