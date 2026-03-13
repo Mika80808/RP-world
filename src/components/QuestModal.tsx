@@ -1,97 +1,166 @@
 import React from 'react';
+import { Book, X, CheckCircle, XCircle, Clock, Coins } from 'lucide-react';
 
 export interface Quest {
   id: string;
   title: string;
+  giver: string;
   description: string;
-  status: 'available' | 'active' | 'completed';
-  createdAt: string;
+  reward: {
+    gold?: number;
+    items?: string[];
+  };
+  deadline?: number;           // 遊戲天數，undefined = 無期限
+  status: 'active' | 'completed' | 'failed';
+  createdAt: string;           // 顯示用 M/D
+  createdAtTotalDays: number;  // 計算期限用
+  completedAt?: string;        // 完成日期 M/D
 }
 
 interface QuestModalProps {
   isOpen: boolean;
   onClose: () => void;
   quests: Quest[];
+  currentTotalDays: number;
 }
 
-export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests }) => {
+export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests, currentTotalDays }) => {
   if (!isOpen) return null;
 
-  const availableQuests = quests.filter(q => q.status === 'available');
   const activeQuests = quests.filter(q => q.status === 'active');
   const completedQuests = quests.filter(q => q.status === 'completed');
+  const failedQuests = quests.filter(q => q.status === 'failed');
+
+  const getRemaining = (q: Quest): string | null => {
+    if (q.deadline == null) return null;
+    const elapsed = currentTotalDays - q.createdAtTotalDays;
+    const left = q.deadline - elapsed;
+    return left > 0 ? `${left} 天` : '0 天';
+  };
+
+  const renderReward = (q: Quest) => {
+    const parts: string[] = [];
+    if (q.reward?.gold) parts.push(`${q.reward.gold} 銅`);
+    if (q.reward?.items?.length) parts.push(...q.reward.items);
+    return parts.length > 0 ? parts.join('、') : '無';
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#f4ebd8]/95 backdrop-blur-md w-full max-w-4xl h-[80vh] rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/20 flex flex-col overflow-hidden text-stone-800 relative">
-        
-        <button 
-          className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 transition"
-          onClick={onClose}
-        >
-          ✕
-        </button>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-stone-900/95 backdrop-blur-xl w-full max-w-2xl max-h-[85vh] rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.6)] border border-white/10 flex flex-col overflow-hidden text-stone-200">
 
-        <div className="flex-1 flex">
-          <div className="flex-1 p-8 border-r border-stone-300/50 relative overflow-y-auto">
-            <div className="absolute right-[-10px] top-10 bottom-10 flex flex-col justify-between w-5 z-10">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="h-4 w-full bg-stone-300 rounded-full shadow-inner border border-stone-400"></div>
-              ))}
-            </div>
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Book className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-bold text-stone-100">任務日誌</h2>
+          </div>
 
-            <h2 className="text-3xl font-bold mb-6 text-stone-800 border-b-2 border-stone-800/20 pb-2">進行中任務</h2>
-            
-            <div className="space-y-6">
-              {activeQuests.length > 0 ? (
-                activeQuests.map(q => (
-                  <div key={q.id} className="bg-white/50 p-4 rounded-xl shadow-sm border border-stone-300">
-                    <h3 className="font-bold text-lg text-stone-800 mb-2">{q.title}</h3>
-                    <p className="text-stone-600 text-sm">{q.description}</p>
-                    <div className="text-xs text-stone-400 mt-2 text-right">{q.createdAt}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-stone-500 py-10">
-                  目前沒有進行中的任務。
+          {/* Status counts */}
+          <div className="flex items-center gap-4 text-sm">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+              <span className="text-emerald-400 font-medium">{activeQuests.length}</span>
+              <span className="text-stone-400">進行中</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-stone-500 inline-block"></span>
+              <span className="text-stone-300 font-medium">{completedQuests.length}</span>
+              <span className="text-stone-500">已完成</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+              <span className="text-red-400 font-medium">{failedQuests.length}</span>
+              <span className="text-stone-500">失敗</span>
+            </span>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-stone-100 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Quest list */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+          {/* Active quests */}
+          {activeQuests.map(q => {
+            const remaining = getRemaining(q);
+            return (
+              <div key={q.id} className="border border-emerald-500/30 bg-emerald-950/20 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className="font-bold text-stone-100 leading-snug">{q.title}</h3>
+                  <span className="flex-shrink-0 flex items-center gap-1 text-xs text-emerald-300 bg-emerald-900/40 border border-emerald-700/30 px-2 py-0.5 rounded-full">
+                    <Clock className="w-3 h-3" />
+                    {remaining !== null ? `剩 ${remaining}` : '無期限'}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
+                <p className="text-xs text-amber-300/80 mb-2">委託：{q.giver || '—'}</p>
+                <p className="text-sm text-stone-300 leading-relaxed">{q.description}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="flex items-center gap-1 text-xs text-stone-400">
+                    <Coins className="w-3 h-3 text-amber-400" />
+                    {renderReward(q)}
+                  </span>
+                  <span className="text-xs text-stone-500">接受：{q.createdAt}</span>
+                </div>
+              </div>
+            );
+          })}
 
-          <div className="flex-1 p-8 relative bg-gradient-to-r from-stone-900/5 to-transparent overflow-y-auto">
-            <h2 className="text-3xl font-bold mb-6 text-stone-800 border-b-2 border-stone-800/20 pb-2">任務清單</h2>
-            
-            <div className="space-y-4">
-              <h4 className="font-bold text-stone-500 uppercase tracking-widest text-sm mb-2">可接取</h4>
-              <ul className="space-y-2">
-                {availableQuests.length > 0 ? (
-                  availableQuests.map(q => (
-                    <li key={q.id} className="bg-white/40 p-3 rounded-lg border border-stone-200">
-                      <div className="font-bold text-stone-700">{q.title}</div>
-                      <div className="text-xs text-stone-500 mt-1">{q.description}</div>
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-sm text-stone-500 italic p-3">目前沒有可接取的任務</li>
-                )}
-              </ul>
-
-              <h4 className="font-bold text-stone-500 uppercase tracking-widest text-sm mb-2 mt-8">已完成</h4>
-              <ul className="space-y-2 opacity-60">
-                {completedQuests.length > 0 ? (
-                  completedQuests.map(q => (
-                    <li key={q.id} className="bg-stone-200/50 p-3 rounded-lg border border-stone-300">
-                      <div className="font-bold text-stone-600 line-through">{q.title}</div>
-                      <div className="text-xs text-stone-500 mt-1">{q.description}</div>
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-sm text-stone-500 italic p-3">目前沒有已完成的任務</li>
-                )}
-              </ul>
+          {/* Completed quests */}
+          {completedQuests.map(q => (
+            <div key={q.id} className="border border-stone-600/20 bg-stone-800/20 rounded-xl p-4 opacity-65">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h3 className="font-bold text-stone-500 line-through leading-snug">{q.title}</h3>
+                <span className="flex-shrink-0 flex items-center gap-1 text-xs text-emerald-500 bg-emerald-900/20 border border-emerald-800/30 px-2 py-0.5 rounded-full">
+                  <CheckCircle className="w-3 h-3" />
+                  完成 {q.completedAt || ''}
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 mb-2">委託：{q.giver || '—'}</p>
+              <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="flex items-center gap-1 text-xs text-stone-600">
+                  <Coins className="w-3 h-3" />
+                  {renderReward(q)}
+                </span>
+                <span className="text-xs text-stone-600">接受：{q.createdAt}</span>
+              </div>
             </div>
-          </div>
+          ))}
+
+          {/* Failed quests */}
+          {failedQuests.map(q => (
+            <div key={q.id} className="border border-red-900/30 bg-red-950/10 rounded-xl p-4 opacity-55">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h3 className="font-bold text-stone-500 line-through leading-snug">{q.title}</h3>
+                <span className="flex-shrink-0 flex items-center gap-1 text-xs text-red-400 bg-red-900/20 border border-red-800/30 px-2 py-0.5 rounded-full">
+                  <XCircle className="w-3 h-3" />
+                  期限超過
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 mb-2">委託：{q.giver || '—'}</p>
+              <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="flex items-center gap-1 text-xs text-stone-600">
+                  <Coins className="w-3 h-3" />
+                  {renderReward(q)}
+                </span>
+                <span className="text-xs text-stone-600">接受：{q.createdAt}</span>
+              </div>
+            </div>
+          ))}
+
+          {quests.length === 0 && (
+            <div className="text-center text-stone-500 py-16">
+              <Book className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>尚無任何任務記錄</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

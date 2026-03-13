@@ -772,17 +772,36 @@ ${recentChat}
       if (timeMatch) {
         const amount = parseInt(timeMatch[1]);
         const unit = timeMatch[2].toLowerCase();
-        setTimeState(prev => {
-          const totalMinutes = prev.hour * 60 + prev.minute + (unit === 'h' ? amount * 60 : amount);
-          const newDay = prev.day + Math.floor(totalMinutes / (24 * 60));
-          const remainMinutes = totalMinutes % (24 * 60);
-          return {
-            ...prev,
-            hour: Math.floor(remainMinutes / 60),
-            minute: remainMinutes % 60,
-            day: newDay,
-          };
-        });
+        const totalMinutes = timeState.hour * 60 + timeState.minute + (unit === 'h' ? amount * 60 : amount);
+        const addedDays = Math.floor(totalMinutes / (24 * 60));
+        const newDay = timeState.day + addedDays;
+        const remainMinutes = totalMinutes % (24 * 60);
+        setTimeState(prev => ({
+          ...prev,
+          hour: Math.floor(remainMinutes / 60),
+          minute: remainMinutes % 60,
+          day: newDay,
+        }));
+        // 自動失敗過期任務
+        if (addedDays > 0) {
+          const newTotalDays = timeState.year * 360 + (timeState.month - 1) * 30 + newDay;
+          const failedTitles: string[] = [];
+          quests.forEach(q => {
+            if (q.status === 'active' && q.deadline != null && q.createdAtTotalDays != null) {
+              if (newTotalDays >= q.createdAtTotalDays + q.deadline) {
+                failedTitles.push(q.title);
+              }
+            }
+          });
+          failedTitles.forEach(title => toastQueue.push(`❌ 任務失敗：${title}`));
+          if (failedTitles.length > 0) {
+            setQuests(prev => prev.map(q =>
+              failedTitles.includes(q.title) && q.status === 'active'
+                ? { ...q, status: 'failed' as const }
+                : q
+            ));
+          }
+        }
         continue;
       }
 
@@ -870,31 +889,63 @@ ${recentChat}
         continue;
       }
 
-      const questAddMatch = cmd.match(/^QUEST_ADD:(.+):(.+)$/i);
-      if (questAddMatch) {
-        const [, title, description] = questAddMatch;
-        setQuests(prev => {
-          const exists = prev.find(q => q.title === title.trim());
-          if (exists) return prev;
-          return [...prev, {
-            id: `quest_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-            title: title.trim(),
-            description: description.trim(),
-            status: 'active',
-            createdAt: `帝國曆 ${timeState.year}年${timeState.month}月${timeState.day}日`
-          }];
-        });
-        toastQueue.push(`📜 新增任務：${title.trim()}`);
+      if (cmd.toUpperCase().startsWith('QUEST_ADD:')) {
+        const parts = cmd.slice('QUEST_ADD:'.length).split(':');
+        const title = parts[0]?.trim() || '';
+        const giver = parts[1]?.trim() || '';
+        const description = parts[2]?.trim() || '';
+        const rewardGold = parseInt(parts[3] || '') || 0;
+        const rewardItemsStr = parts[4]?.trim() || '';
+        const deadlineDays = parseInt(parts[5] || '') || undefined;
+        const rewardItems = rewardItemsStr ? rewardItemsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+        if (title) {
+          const createdAtTotalDays = timeState.year * 360 + (timeState.month - 1) * 30 + timeState.day;
+          setQuests(prev => {
+            if (prev.some(q => q.title === title)) return prev;
+            return [...prev, {
+              id: `quest_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+              title,
+              giver,
+              description,
+              reward: {
+                ...(rewardGold > 0 ? { gold: rewardGold } : {}),
+                ...(rewardItems.length > 0 ? { items: rewardItems } : {}),
+              },
+              ...(deadlineDays ? { deadline: deadlineDays } : {}),
+              status: 'active' as const,
+              createdAt: `${timeState.month}/${timeState.day}`,
+              createdAtTotalDays,
+            }];
+          });
+          toastQueue.push(`📋 新任務：${title}`);
+          setIsQuestModalOpen(true);
+        }
         continue;
       }
 
       const questCompleteMatch = cmd.match(/^QUEST_COMPLETE:(.+)$/i);
       if (questCompleteMatch) {
-        const [, title] = questCompleteMatch;
-        setQuests(prev => prev.map(q => 
-          q.title === title.trim() ? { ...q, status: 'completed' } : q
-        ));
-        toastQueue.push(`✅ 完成任務：${title.trim()}`);
+        const titleTrimmed = questCompleteMatch[1].trim();
+        const quest = quests.find(q => q.title === titleTrimmed && q.status === 'active');
+        if (quest) {
+          if (quest.reward?.gold) goldDelta += quest.reward.gold;
+          if (quest.reward?.items?.length) {
+            quest.reward.items.forEach(item => {
+              setInventory(prev => {
+                const exists = prev.find(i => i.name === item);
+                if (exists) return prev.map(i => i.name === item ? { ...i, quantity: i.quantity + 1 } : i);
+                return [...prev, { id: Date.now() + Math.floor(Math.random() * 999), name: item, quantity: 1, description: '' }];
+              });
+            });
+          }
+          const rewardStr = quest.reward?.gold ? `，獲得 ${quest.reward.gold} 銅` : '';
+          toastQueue.push(`✅ 任務完成：${titleTrimmed}${rewardStr}`);
+          setQuests(prev => prev.map(q =>
+            q.title === titleTrimmed && q.status === 'active'
+              ? { ...q, status: 'completed' as const, completedAt: `${timeState.month}/${timeState.day}` }
+              : q
+          ));
+        }
         continue;
       }
 
@@ -1197,6 +1248,19 @@ HP: ${profile.hp} | MP: ${profile.mp} | Gold: ${profile.gold}
 ${inventory.length > 0 ? inventory.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : '（空）'}
 ${consumables.length > 0 ? consumables.map(i => `- ${i.name} x${i.quantity}: ${i.description}`).join('\n') : ''}
 
+[進行中任務]
+${(() => {
+  const active = quests.filter(q => q.status === 'active');
+  if (active.length === 0) return '（無）';
+  const todayTotal = timeState.year * 360 + (timeState.month - 1) * 30 + timeState.day;
+  return active.map(q => {
+    const remaining = q.deadline != null
+      ? `剩 ${q.deadline - (todayTotal - q.createdAtTotalDays)} 天`
+      : '無期限';
+    return `${q.title}（委託：${q.giver}，${remaining}）`;
+  }).join('\n');
+})()}
+
 ---
 [🌍 World Memory]
 ${worldMems.length > 0 ? worldMems.map(m => `- ${m.content}${m.tags?.factions?.length ? ' ['+m.tags.factions.join(',')+']' : ''}`).join('\n') : '（無）'}
@@ -1267,7 +1331,7 @@ AFFINITY:角色名:+10
 LOCATION:新地點名稱
 TIME:+1h
 ITEM_ADD:道具名:1:說明文字
-QUEST_ADD:任務名稱:任務描述
+QUEST_ADD:任務名稱:委託人NPC:目標描述:獎勵金幣:獎勵道具(逗號分隔可留空):期限天數(可留空=無期限)
 QUEST_COMPLETE:任務名稱
 NPC_THOUGHT:角色名:一句話內心想法
 NPC_RELATIONSHIP:角色名:與玩家的關係描述
@@ -1289,6 +1353,12 @@ MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 
 【AI 何時應輸出 NPC_RELATIONSHIP】
 當玩家與 NPC 初次建立明確關係（如：成為顧客、僱主、同行者、對手），或關係發生重大轉變時（如：從陌生人變成盟友、從朋友變成仇人），輸出一句簡短的關係描述（例如「偶爾光顧的旅行者」「被委託的冒險者」「礙眼的外來者」）。
+
+【AI 何時應輸出 QUEST_ADD】
+當 NPC 正式委託玩家任務、或玩家從布告欄接取任務時輸出。格式：QUEST_ADD:任務名:委託人:目標描述:獎勵金幣(數字):獎勵道具(逗號分隔,可留空):期限天數(數字,可留空)。任務名稱之後的欄位均可留空。
+
+【AI 何時應輸出 QUEST_COMPLETE】
+當玩家向委託人回報、AI 判斷任務確實達成時輸出。必須使用與 QUEST_ADD 完全相同的任務名稱。
 
 【AI 何時應輸出 NPC_NEW / NPC_HOME / NPC_LOCATION】
 - NPC_NEW：創造有名有姓、會在世界中固定出現的新角色時輸出（一次性建檔）
@@ -1442,7 +1512,21 @@ Please respond as the DM.`;
               <ChevronRight className="w-4 h-4 text-amber-400/50 group-hover:text-amber-400 transition" />
             </div>
             <ul className="text-sm space-y-1 text-stone-300">
-              <li className="text-stone-500 italic">目前沒有任務</li>
+              {quests.filter(q => q.status === 'active').length > 0 ? (
+                <>
+                  {quests.filter(q => q.status === 'active').slice(0, 3).map(q => (
+                    <li key={q.id} className="flex items-center gap-1.5 truncate">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                      <span className="truncate">{q.title}</span>
+                    </li>
+                  ))}
+                  {quests.filter(q => q.status === 'active').length > 3 && (
+                    <li className="text-stone-500 text-xs pl-3">…還有 {quests.filter(q => q.status === 'active').length - 3} 個</li>
+                  )}
+                </>
+              ) : (
+                <li className="text-stone-500 italic">目前沒有任務</li>
+              )}
             </ul>
           </div>
           
@@ -2003,7 +2087,12 @@ Please respond as the DM.`;
       </div>
 
       {/* Quest Modal Overlay */}
-      <QuestModal isOpen={isQuestModalOpen} onClose={() => setIsQuestModalOpen(false)} quests={quests} />
+      <QuestModal
+        isOpen={isQuestModalOpen}
+        onClose={() => setIsQuestModalOpen(false)}
+        quests={quests}
+        currentTotalDays={timeState.year * 360 + (timeState.month - 1) * 30 + timeState.day}
+      />
 
       {/* Profile Modal Overlay */}
       <ProfileModal
