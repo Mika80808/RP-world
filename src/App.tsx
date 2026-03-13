@@ -914,6 +914,38 @@ ${recentChat}
         }));
         continue;
       }
+
+      const locDiscoverMatch = cmd.match(/^LOCATION_DISCOVER:(.+)$/i);
+      if (locDiscoverMatch) {
+        const locName = locDiscoverMatch[1].trim();
+        setWorldMap(prev => {
+          // Try to match an existing fixed location
+          const fixedIdx = prev.fixed.findIndex(l =>
+            l.name.includes(locName) || locName.includes(l.name)
+          );
+          if (fixedIdx !== -1) {
+            const updated = [...prev.fixed];
+            updated[fixedIdx] = { ...updated[fixedIdx], discovered: true };
+            return { ...prev, fixed: updated };
+          }
+          // Otherwise add to dynamic as undiscovered
+          const alreadyExists = prev.dynamic.some(d => d.name === locName);
+          if (alreadyExists) return prev;
+          return {
+            ...prev,
+            dynamic: [...prev.dynamic, {
+              id: `disc_${Date.now()}`,
+              name: locName,
+              desc: '旅途中發現的神秘地點，尚待探索。',
+              location: currentLocation,
+              isPinned: false,
+              discovered: false,
+            }],
+          };
+        });
+        toastQueue.push(`🗺️ 發現新地點：${locName}`);
+        continue;
+      }
     }
 
     if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
@@ -1150,6 +1182,7 @@ ITEM_ADD:道具名:1:說明文字
 QUEST_ADD:任務名稱:任務描述
 QUEST_COMPLETE:任務名稱
 NPC_THOUGHT:角色名:一句話內心想法
+LOCATION_DISCOVER:地點名稱
 MEMORY_ADD:region:normal:迷霧森林昨日大火，黑牙氏族前往支援:locations=迷霧森林:factions=黑牙氏族:keywords=大火,火災:sticky=3
 MEMORY_ADD:scene:normal:酒館因打架暫時關閉:locations=酒館
 MEMORY_ADD:npc:normal:芬里爾透露停火協議內容:npcs=芬里爾:keywords=停火,協議
@@ -1159,11 +1192,14 @@ MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 【AI 何時應輸出 NPC_THOUGHT】
 當 NPC 有明顯情緒變化、做出重要決定、或對玩家產生新看法時，以第一人稱輸出一句話內心想法。
 
+【AI 何時應輸出 LOCATION_DISCOVER】
+當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點（如路牌、旅人提及、地圖殘片等），輸出 LOCATION_DISCOVER:地點名稱，前端會自動將其標記為「待探索」地點加入世界地圖。
+
 【AI 何時應輸出 MEMORY_ADD】
 當發生以下五種情境時，請務必使用 MEMORY_ADD 記錄：
 1. 世界事件 (world)：影響整個世界的重大變故（如：魔王宣戰、天象異變）。
 2. 區域事件 (region)：特定區域的動態變化（如：森林大火、城鎮慶典）。
-   * 特別規則：若你的回應裡出現 `[ ]` 格式的布告欄內容或公告時，必定觸發 `MEMORY_ADD:region` 將其記錄下來。
+   * 特別規則：若你的回應裡出現 [ ] 格式的布告欄內容或公告時，必定觸發 MEMORY_ADD:region 將其記錄下來。
 3. 場景狀態改變 (scene)：當前地點的物理或狀態改變（如：酒館被砸毀、橋樑斷裂）。
 4. NPC 情報 (npc)：NPC 透露的關鍵秘密、身世或重要決定。
 5. 玩家重要事件 (world/region/npc)：玩家達成的重大成就、做出的關鍵選擇，或與 NPC 關係的重大突破。

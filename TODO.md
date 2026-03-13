@@ -17,11 +17,13 @@
   用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有黑色系 UI。
   2026-03-13 Gemini: 在 `src/index.css` 新增全域捲軸樣式，配合深色系 UI。
 
-- [ ] **世界地圖視覺化**
+- [x] **世界地圖視覺化**
   目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
+  2026-03-13 Claude: 重寫 `MapModal.tsx`，改用 SVG 節點地圖；依 type 分色（town/danger/city/poi）；可滑鼠拖曳 pan；hover tooltip；地形裝飾線；節點連線；圖例；搜尋欄；undiscovered 霧化效果。
 
-- [ ] **旅途中發現地點融入故事**
+- [x] **旅途中發現地點融入故事**
   AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
+  2026-03-13 Claude: 在 `parseAndExecuteCommands` 新增 `LOCATION_DISCOVER` 解析；模糊比對已知地點設 discovered=true；未知地點加入 dynamic 陣列標記「待探索」；Toast 通知；Prompt 說明 AI 何時應輸出。
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
