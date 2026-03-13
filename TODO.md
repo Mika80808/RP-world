@@ -79,6 +79,33 @@
 
 ## 🔴 高優先
 
+- [ ] **App.tsx 組件拆分重構**
+
+  **背景**：App.tsx 目前超過 2000 行，未來功能加入後預估達 4000–5000 行。趁功能未爆炸前先拆，降低維護成本與 AI token 消耗。
+
+  **完成後更新本檔案頂部規則為**：
+  - `App.tsx`：只保留 state、handlers、`buildPrompt`、`parseAndExecuteCommands`、API 呼叫、主介面三欄 JSX
+  - `src/components/`：純 UI 組件，只接收 props 和 callback，**不持有業務 state**
+  - AI 改功能前必須先讀取對應組件檔案
+
+  **拆分清單**（依序執行，每拆一個確認畫面正常再繼續）：
+
+  | 目標檔案 | 備註 |
+  |---|---|
+  | `src/components/DiaryModal.tsx` | 日記 Modal，handlers 留在 App.tsx 以 props 傳入 |
+  | `src/components/LorebookModal.tsx` | 設定集 Modal |
+  | `src/components/NpcModal.tsx` | NPC 詳情 Modal |
+  | `src/components/MapModal.tsx` | 地圖 Modal（已存在，確認介面一致） |
+  | `src/components/SettingsModal.tsx` | 系統設定 Modal（已存在） |
+  | `src/components/QuestModal.tsx` | 任務 Modal（已存在） |
+  | `src/components/ProfileModal.tsx` | 個人資訊 Modal（已存在） |
+  | `src/components/SystemPromptModal.tsx` | 系統提示詞 Modal（已存在） |
+
+  **每個組件的 props 設計原則**：
+  - 需要顯示的 state 資料以 props 傳入
+  - 需要修改 state 的操作以 callback 函數傳入（例如 `onClose`, `onSave`, `onChange`）
+  - 組件內不使用 `useState` 管理業務資料，只允許管理純 UI 狀態（例如搜尋框輸入值、展開折疊）
+
 - [x] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
   包含五種情境：世界事件 / 區域事件 / 場景狀態改變 / NPC 情報 / 玩家重要事件。
