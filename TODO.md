@@ -123,13 +123,12 @@
 
 ## 🟡 中優先
 
-- [ ] **NPC 出沒設定**
-  lorebookEntries 的 NPC 類加入：`territory: string[]`（活動地點）、`appearChance: number`（出現機率 0~100）、`isLocationBound: boolean`（是否限定地點）。
-
-- [ ] **NPC 兩階段注入**
-  第一階段：進入場景時注入輕量名單（只有名字 + 職業）。
-  AI 輸出 `[出場:姓名,姓名]` 標記決定今天誰在場。
-  第二階段：偵測到出場標記後，注入完整 NPC 資料 + 相關記憶。
+- [x] **NPC 出沒系統 + 兩階段注入**
+  LorebookEntry 新增 `homeLocation`（主場）、`roamLocations`（滑動窗口，最近 3 個非主場地點）。
+  COMMANDS 新增 `NPC_NEW`（建檔同時建立 npcs entry）、`NPC_HOME`（首次寫入主場）、`NPC_LOCATION`（更新 roamLocations）。
+  Phase 1：buildPrompt 注入候選名單（輕量，name+job，最多 5 個）。
+  Phase 2：AI 輸出 `[出場:姓名,姓名]` 標記，前端解析後更新 `appearingNpcs` state，下一輪注入出場 NPC 完整資料（替換舊的 n.location 邏輯）；同時更新 lastSeen，並從顯示文字中移除標記。
+  2026-03-13 Claude: LorebookModal.tsx 介面、App.tsx（state/parseAndExecuteCommands/buildPrompt/stream後處理）
 
 ---
 

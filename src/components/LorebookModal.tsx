@@ -15,6 +15,8 @@ export interface LorebookEntry {
   secondaryKeys?: string[];
   selective?: boolean;
   insertionOrder?: number;
+  homeLocation?: string;
+  roamLocations?: string[];
 }
 
 interface LorebookModalProps {
