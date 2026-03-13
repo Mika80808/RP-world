@@ -67,7 +67,6 @@ export default function App() {
 
   const getCelestialIcon = () => {
     if (timeState.month === 4) {
-      // 雙月之月
       return (
         <div className="flex items-center mr-1.5 relative w-5 h-4">
           <Moon className="w-3.5 h-3.5 text-indigo-300 absolute left-0" />
@@ -88,6 +87,17 @@ export default function App() {
   // ─── API Key ──────────────────────────────────────────────────────────────────
   const [geminiApiKey, setGeminiApiKey] = useState<string>(
     () => localStorage.getItem('gemini_api_key') || ''
+  );
+
+  // ─── Max Tokens ───────────────────────────────────────────────────────────────
+  const TOKEN_OPTIONS = [
+    { label: '16K', value: 16384 },
+    { label: '32K', value: 32768 },
+    { label: '64K', value: 65536 },
+  ];
+
+  const [maxTokens, setMaxTokens] = useState<number>(
+    () => parseInt(localStorage.getItem('gemini_max_tokens') || '32768')
   );
 
   // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
@@ -135,27 +145,6 @@ export default function App() {
     { id: 13, title: '失落拼圖山丘', content: '許多冒險者(不限於異鄉人)會在這裡丟棄失敗的任務線索，據說是能擺脫霉氣。有些人會到這裡尋寶，也許可以從某些道具解鎖其他訊息。', category: '地點', isActive: true },
     { id: 14, title: '黑森林古道', content: '連接月湖鎮與迷霧森林的隱蔽小徑，據說偶爾會出現會誘人的「糖果屋」。', category: '地點', isActive: true },
     { id: 15, title: '異鄉人公寓', content: '位於月湖鎮城南住宅區的三層木造建築，外觀略顯陳舊，但結構依然堅固。由異鄉人公會管理，為居住者提供了一份低調的安寧。每週租金35銅。\n一樓：公共空間。公寓的公共生活圍繞著「互助」與「資訊共用」的核心展開，主要體現在一樓的布告欄上。\n二樓與三樓：寢室區。', category: '地點', isActive: true },
-    { id: 18, title: '芬里爾', job: '黑牙氏族首領', appearance: '銀藍色毛髮，金色眼眸，身形高大，具有王者氣派。', personality: '威嚴、果決、深思熟慮，一位高瞻遠矚的改革家與理想主義者。', other: '黑牙氏族現任首領（Alpha），擁有絕對的權威。孤獨的遠見者。他廢除決鬥儀式的決定，絕非一時興起，而是他籌謀已久、甚至可能已為此與族中保守派鬥爭多年的結果。曾是「氏族最強的戰士」。', category: 'NPC', isActive: true },
-    { id: 19, title: '格雷厄姆', job: '黑牙氏族指揮官', appearance: '暗灰色短毛髮，金色眼眸，面容嚴肅，不苟言笑，眼神銳利，「行走的冰山」。', personality: '典型的軍人風格，務實、嚴肅、忠誠不二。思考問題偏向戰略與安全。', other: '黑牙氏族指揮官，芬里爾的得力助手，掌管族內軍事與防衛。他並非天生的完美戰士，而是靠後天加倍的努力與嚴苛的自我要求，才爬到了今天的位置。極度自律、有著強烈的責任感與榮譽感。喜歡鹹食。', category: 'NPC', isActive: true },
-    { id: 20, title: '布萊茲', job: '黑牙氏族副指揮官', appearance: '淡灰色短毛髮，藍色瞳孔。', personality: '平時有點玩世不恭，但知道分寸，在軍中扮演白臉的角色，但以上級的命令為絕對優先。', other: '黑牙氏族副指揮官（斥候）- 平時負責物資調度，熟知族內大小事，特殊時期才會輔佐格雷厄姆，據本人的說法是，因為格雷厄姆覺得他有點煩。', category: 'NPC', isActive: true },
-    { id: 21, title: '烏爾夫', job: '首席藥師兼弓箭手', appearance: '銀白色短毛髮，琥珀色的眼眸，身上常帶有淡淡的草藥清香。', personality: '溫和、善良、博學、體貼、樂於助人，醫術高明，令人安心的暖男。', other: '黑牙氏族首席藥師兼弓箭手，備受族人尊敬和信賴。因幼年時母親體弱多病，立志成為能拯救他人的藥師。對森林中的藥草與植物瞭若指掌。儘管體質並非天生強悍，但他從未缺席過任何一次戰士訓練。擁有神射手箭術、強大的力量與動態視力。能夠拉開比他人還高的黑色長弓。該弓的弓弦由龍筋混合特殊魔法金屬絲線製成，用途是「威懾」與「破甲」，足以射穿龍鱗等級的護甲。芬里爾是學長，格雷厄姆、烏爾夫、布萊茲是同期訓練生，私交不錯。', category: 'NPC', isActive: true },
-    { id: 22, title: '西拉斯', job: '藥師', appearance: '灰白色狼人，身上披著一件深色的樸素長袍，戴著一副看起來像是用晶石打磨成的單片眼鏡。', personality: '表面寡言，內心柔軟。擁有驚人的智慧與洞察力。', other: '氏族最年長的藥師，烏爾夫的老師，德高望重。', category: 'NPC', isActive: true },
-    { id: 23, title: '格瑞塔', job: '公共廚房負責人', appearance: '', personality: '嗓門洪亮、性格爽朗、熱情豪邁，樂於分享食材和經驗。是典型的大家長式人物。喜歡看狼族成員戀愛（有多子多孫的意思）', other: '黑牙氏族公共廚房的負責人。', category: 'NPC', isActive: true },
-    { id: 24, title: '霍爾特', job: '工匠區管理者', appearance: '', personality: '脾氣暴躁、說話直接、不近人情，「口嫌體正直」。', other: '工匠區的管理者，負責氏族所有工具、武器、大型器具的製造與維護。', category: 'NPC', isActive: true },
-    { id: 26, title: '艾娜', job: '育幼區長老', appearance: '', personality: '和藹可親。', other: ' 黑牙氏族育幼區長老，幼崽稱呼她為艾拉拉。格瑞達大嬸的母親。知道很多狼族成員幼崽時期的「黑歷史」。', category: 'NPC', isActive: true },
-    { id: 27, title: '羅賓', job: '獵人公會代表', appearance: ' 人類。獵人公會代表。約 25 歲。身形結實，褐色微亂的短髮，臉上帶有些許雀斑，眼神清澈、堅定。', personality: '聰慧且善於學習，責任感強，正直的善良青年。他真心相信不同種族之間可以和平共存，並願意為此付出努力。是獵人公會中思想最為開明的年輕一代。', other: '人類，月湖鎮獵人公會代表、和平派對狼族事務的指定代表。具備優秀的森林知識、追蹤能力與野外生存技巧。不擅長正面衝突，但在接下和平派代表的責任後，交涉與應對危機的膽識正在快速成長。', category: 'NPC', isActive: true },
-    { id: 28, title: '埃德蒙', job: '獵人公會會長', appearance: ' 人類。獵人公會會長。身形高大但略顯疲憊。整齊的灰黑色頭髮，法令紋讓他看起來比實際年齡更蒼老。穿著得體的深色正裝。', personality: '厭世、沉穩、理性、 外冷內熱。', other: '中年人類。曾是上一代最強的傳奇獵人，但在一次損失慘重的討伐任務後，他選擇退居幕後，成為了公會的管理者。那次任務讓他深刻體會到無謂衝突的代價，因此他內心其實是支持羅賓的和平路線的。和平派幕後的支持者，親自任命羅賓為對狼族事務的代表。會長整天埋首於公文與財務報表，但會在關鍵時刻用權威駁回凱拉過於激進的提案，或為私底下支援羅賓。', category: 'NPC', isActive: true },
-    { id: 29, title: '凱拉', job: '主獵手', appearance: '人類。獵人公會主獵手。約30歲，身材高挑精悍，肌肉線條分明。紅色的短髮總是俐落地束在腦後。', personality: '暴躁、榮譽至上，直來直往、盛氣凌人。', other: '人類，戰鬥教官。凱拉是公會中的鷹派代表，也是最強的主力獵手之一。信奉「力量決定一切」，對於任何非人、尤其是具有掠食者天性的種族抱持懷疑(擔心人類受到威脅)。公開的反對和平派。他尊敬羅賓的勇氣，但不認同他的理念。', category: 'NPC', isActive: true },
-    { id: 30, title: '艾文', job: '情報官', appearance: '人類。獵人公會情報官。年輕，精靈尖耳朵，但輪廓比純血精靈柔和。亞麻色的微卷中長髮，碧綠色眼精。', personality: '隨和、散漫。幽默、內向、八卦(消息最靈通)。', other: '半精靈。情報分析師 & 魔物生態研究員。艾文負責管理公會的任務檔案以及各種魔物材料。他對戰鬥一竅不通，但熟知「魔物學」。他最大的樂趣就是蒐集情報和鎮上的八卦。中立的情報提供者。艾文對政治立場不感興趣。', category: 'NPC', isActive: true },
-    { id: 31, title: '盤根老爹', job: '店主/鍊金術師', appearance: '前冒險家，月湖鎮百草巷中的「盤根老爹的店」店主。非常年長（推測超過300歲，因其年輕時見過據說已絕跡三百年的「陽鱗龍蜥」）。', personality: '脾氣古怪，不善交際，有虛榮心。內在核心：極度念舊，重情重義。閱歷豐富，內心孤獨。', other: '矮人。前冒險家，月湖鎮百草巷中的「盤根老爹的店」店主、鍊金術師、鑑定師。作為一個活了數百年的「活化石」，他那看似炫耀的「故事模式」，其實是在宣洩孤獨。', category: 'NPC', isActive: true },
-    { id: 32, title: '伊拉拉', job: '歷史學者', appearance: '女性。精靈。歷史學者', personality: '性格文靜、有禮貌且自律。', other: '精靈。歷史學者。似乎是公寓裡居住最久的成員。她的家鄉是名為「銀葉谷」的精靈城市，但因不明「變故」而無法回去。她在後院種植植物。', category: 'NPC', isActive: true },
-    { id: 33, title: '波羅', job: '弓弩手/釀酒師', appearance: '紅眼、白長髮，身材精實。', personality: '初期謹慎，內心溫柔熱情，有著驚人的耐心與細緻。喝醉後會異常熱情。', other: '身手矯健，使用並保養複雜的輕型弩箭。釀造後勁強勁的「熊族蜂蜜酒」。', category: 'NPC', isActive: true },
-    { id: 34, title: '里歐', job: '法師學徒', appearance: '穿著整齊的深藍色法師學徒袍。英俊，但表情通常略帶嚴肅。', personality: '秩序善良。講究規則、條理和紀律，有輕微的潔癖和強迫症。人很好，會主動組織茶會等公共事務，關心室友之間的和諧關係。', other: '人類。「奧術學宮」的法師學徒。技能：奧術理論知識、施放基礎的輔助性法術。', category: 'NPC', isActive: true },
-    { id: 35, title: '莎夏', job: '鍊金術士', appearance: '棕色雜亂短髮。鼻樑上架著護目鏡，工作服上常沾有不明污漬。二十出頭，焦糖色大眼睛，充滿活力。', personality: '混亂中立，對未知事物充滿狂熱的好奇心，行事大膽，不畏風險。會忘記生活公約，但在閒暇時很健談、熱情。', other: '人類。鍊金術士。在公寓後面租了一個小房間當工作室。技能：鍊金術天才。能製作出效果奇特、味道也同樣奇特的藥劑與料理。', category: 'NPC', isActive: true },
-    { id: 36, title: '波林', job: '老闆', appearance: '身材微胖，留著兩撇小鬍子的中年男人。', personality: '務實的生意人，為人不算刻薄，對員工有一定程度的保護心。有點八卦。', other: '人類。老闆。', category: 'NPC', isActive: true },
-    { id: 37, title: '米米', job: '侍女兼雜工', appearance: '有著兔耳，紅色眼眸，活潑可愛。', personality: '善良、勤勞、關心家人。', other: '兔耳族，侍女兼雜工。與妹妹莉莉跟母親同住。', category: 'NPC', isActive: true },
-    { id: 38, title: '巴克', job: '廚師', appearance: '身材魁梧，灰綠色皮膚，下顎有兩顆小獠牙。', personality: '沉默寡言，但內心認可勤勞的人。經驗老道，直覺敏銳。', other: '半獸人。廚師。', category: 'NPC', isActive: true },
-    { id: 39, title: '魔王', job: '魔王', appearance: '失序谷魔王。外貌與性別可隨意變換，但無論如何變化，都會維持在一個「好看」的狀態。', personality: '聰明但散漫。混亂邪惡，但偏向樂子人，懶得親手害死誰，更享受戲弄別人帶來的樂趣。其領地的氛圍也因此顯得「歡樂鬆散」。', other: '會根據魔物特性，讓他們各司其職去工作。外貌協會：對「美」有著極高的標準，偏愛所有好看的外表。這一點也體現在他的城堡守則上——只有外貌姣好者才能進入。曾因為想作亂，和引路者有些「曲折的過去」，單方面認為自己跟「引路者」是歡喜冤家(同樣都活太久)。', category: 'NPC', isActive: true }
   ]);
   const [editingLorebookId, setEditingLorebookId] = useState<number | null>(null);
   const [lorebookFilter, setLorebookFilter] = useState<string>('地點');
@@ -215,12 +204,10 @@ export default function App() {
     
     const distance = Math.sqrt(Math.pow(dest.x - origin.x, 2) + Math.pow(dest.y - origin.y, 2));
     
-    // Walking time (15 mins per unit)
     const walkMinutes = Math.round(distance * 15);
     const walkHours = Math.floor(walkMinutes / 60);
     const walkMins = walkMinutes % 60;
     
-    // Carriage time (5 mins per unit, 3x faster)
     const carriageMinutes = Math.round(distance * 5);
     const carriageHours = Math.floor(carriageMinutes / 60);
     const carriageMins = carriageMinutes % 60;
@@ -324,6 +311,7 @@ ${recentChat}
       const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
         contents: prompt,
+        config: { maxOutputTokens: maxTokens },
       });
 
       const text = response.text || '';
@@ -356,6 +344,7 @@ ${recentChat}
       const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
         contents: prompt,
+        config: { maxOutputTokens: maxTokens },
       });
       const text = response.text || '';
       const newId = Date.now();
@@ -511,7 +500,6 @@ ${recentChat}
       }
     };
     reader.readAsText(file);
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -597,19 +585,6 @@ ${recentChat}
   };
 
   // ─── 前端 COMMANDS 解析器 ────────────────────────────────────────────────────
-  // AI 回應格式：<<COMMANDS>>...<</COMMANDS>> 裡的指令由前端執行，不顯示給玩家
-  //
-  // 支援指令：
-  //   HP:+10 / HP:-15          → 增減 HP（無上限，最低為 0）
-  //   MP:+5  / MP:-10          → 增減 MP（無上限，最低為 0）
-  //   GOLD:+200 / GOLD:-50     → 增減金幣
-  //   AFFINITY:角色名:+10       → 更新 NPC 好感度（自動 clamp 在 -100~100）
-  //   LOCATION:新地點           → 移動玩家位置
-  //   TIME:+1h / TIME:+30m     → 推進遊戲內時間
-  //   ITEM_ADD:道具名:數量:說明  → 新增背包道具
-  //   ITEM_REMOVE:道具名:數量   → 移除背包道具
-  //   MEMORY_ADD:類型:內容:標籤  → 自動新增記憶（類型: world/region/scene/npc）
-
   const parseAndExecuteCommands = (rawText: string): string => {
     const commandBlockRegex = /<<COMMANDS>>([\s\S]*?)(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi;
     const optionsBlockRegex = /<<OPTIONS>>([\s\S]*?)(?:<<\/OPTIONS>>|<\/OPTIONS>>|<\/OPTIONS>|$)/gi;
@@ -617,7 +592,6 @@ ${recentChat}
     let commandsFound = false;
     let optionsFound = false;
 
-    // 收集所有選項區塊
     const allOptions: string[] = [];
     let optMatch;
     while ((optMatch = optionsBlockRegex.exec(narrative)) !== null) {
@@ -639,7 +613,6 @@ ${recentChat}
       setQuickOptions(['觀察四周', '檢查自己', '大聲求助']);
     }
 
-    // 收集所有指令區塊
     const allCommands: string[] = [];
     let match;
     while ((match = commandBlockRegex.exec(narrative)) !== null) {
@@ -648,14 +621,12 @@ ${recentChat}
       allCommands.push(...lines);
     }
 
-    // 從顯示文字中移除指令區塊
     if (commandsFound) {
       narrative = narrative.replace(/<<COMMANDS>>[\s\S]*?(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi, '').trim();
     }
 
     if (allCommands.length === 0) return narrative;
 
-    // 批次執行所有指令（避免多次 setState 競爭）
     let hpDelta = 0;
     let mpDelta = 0;
     let goldDelta = 0;
@@ -663,35 +634,30 @@ ${recentChat}
     const toastQueue: string[] = [];
 
     for (const cmd of allCommands) {
-      // HP:+10 or HP:-15
       const hpMatch = cmd.match(/^HP:([+-]\d+)$/i);
       if (hpMatch) {
         hpDelta += parseInt(hpMatch[1]);
         continue;
       }
 
-      // MP:+5 or MP:-10
       const mpMatch = cmd.match(/^MP:([+-]\d+)$/i);
       if (mpMatch) {
         mpDelta += parseInt(mpMatch[1]);
         continue;
       }
 
-      // GOLD:+200 or GOLD:-50
       const goldMatch = cmd.match(/^GOLD:([+-]\d+)$/i);
       if (goldMatch) {
         goldDelta += parseInt(goldMatch[1]);
         continue;
       }
 
-      // AFFINITY:角色名:+10
       const affinityMatch = cmd.match(/^AFFINITY:(.+):([+-]\d+)$/i);
       if (affinityMatch) {
         affinityUpdates.push({ name: affinityMatch[1].trim(), delta: parseInt(affinityMatch[2]) });
         continue;
       }
 
-      // LOCATION:新地點
       const locationMatch = cmd.match(/^LOCATION:(.+)$/i);
       if (locationMatch) {
         const newLoc = locationMatch[1].trim();
@@ -700,7 +666,6 @@ ${recentChat}
         continue;
       }
 
-      // TIME:+1h or TIME:+30m
       const timeMatch = cmd.match(/^TIME:\+(\d+)(h|m)$/i);
       if (timeMatch) {
         const amount = parseInt(timeMatch[1]);
@@ -719,7 +684,6 @@ ${recentChat}
         continue;
       }
 
-      // ITEM_ADD:道具名:數量:說明
       const itemAddMatch = cmd.match(/^ITEM_ADD:(.+):(\d+):?(.*)$/i);
       if (itemAddMatch) {
         const [, name, qty, desc] = itemAddMatch;
@@ -734,7 +698,6 @@ ${recentChat}
         continue;
       }
 
-      // ITEM_REMOVE:道具名:數量
       const itemRemoveMatch = cmd.match(/^ITEM_REMOVE:(.+):(\d+)$/i);
       if (itemRemoveMatch) {
         const [, name, qty] = itemRemoveMatch;
@@ -745,14 +708,11 @@ ${recentChat}
         continue;
       }
 
-      // MEMORY_ADD:type:importance:content:locations=x,y:npcs=a:factions=b:keywords=c:sticky=N:expires=date
-      // 簡化格式也支援：MEMORY_ADD:type:content:locationTag
       const memAddMatch = cmd.match(/^MEMORY_ADD:(world|region|scene|npc):(.+)$/i);
       if (memAddMatch) {
         const [, rawType, rest] = memAddMatch;
         const parts = rest.split(':');
 
-        // 判斷第一個 part 是否為 importance
         const importancePat = /^(critical|normal|flavor)$/i;
         let importance = 'normal';
         let contentStart = 0;
@@ -761,14 +721,12 @@ ${recentChat}
           contentStart = 1;
         }
 
-        // 找到第一個含 = 的 part 作為 options 開始
         let optStart = parts.findIndex((p, i) => i > contentStart && p.includes('='));
         if (optStart === -1) optStart = parts.length;
 
         const contentStr = parts.slice(contentStart, optStart).join(':').trim();
         const optParts = parts.slice(optStart);
 
-        // 解析 options
         const getOpt = (key: string) => {
           const found = optParts.find(p => p.toLowerCase().startsWith(key + '='));
           return found ? found.split('=')[1] : '';
@@ -789,7 +747,6 @@ ${recentChat}
         const sticky     = parseInt(getOpt('sticky') || '0');
         const expires    = getOpt('expires') || undefined;
 
-        // 若沒有 locations 且是 scene/region，預設用當前地點
         const finalLocations = locations.length > 0 ? locations
           : (rawType === 'scene' || rawType === 'region') ? [currentLocation] : [];
 
@@ -812,25 +769,22 @@ ${recentChat}
       }
     }
 
-    // 批次更新數值
     if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
       setProfile(prev => {
-        const newHp = Math.max(0, prev.hp + hpDelta);  // 無上限
-        const newMp = Math.max(0, prev.mp + mpDelta);  // 無上限
+        const newHp = Math.max(0, prev.hp + hpDelta);
+        const newMp = Math.max(0, prev.mp + mpDelta);
         const newGold = Math.max(0, prev.gold + goldDelta);
 
         if (hpDelta !== 0) toastQueue.push(hpDelta > 0 ? `❤️ HP +${hpDelta}` : `💔 HP ${hpDelta}`);
         if (mpDelta !== 0) toastQueue.push(mpDelta > 0 ? `💙 MP +${mpDelta}` : `💙 MP ${mpDelta}`);
         if (goldDelta !== 0) toastQueue.push(goldDelta > 0 ? `🪙 +${goldDelta} G` : `🪙 ${goldDelta} G`);
 
-        // 死亡判定
         if (newHp === 0) toastQueue.push('💀 HP 歸零！');
 
         return { ...prev, hp: newHp, mp: newMp, gold: newGold };
       });
     }
 
-    // 批次更新 NPC 好感度
     if (affinityUpdates.length > 0) {
       setNpcs(prev => prev.map(npc => {
         const update = affinityUpdates.find(u =>
@@ -843,7 +797,6 @@ ${recentChat}
       }));
     }
 
-    // 依序顯示 toast（每條間隔 600ms）
     toastQueue.forEach((msg, i) => {
       setTimeout(() => showToast(msg), i * 600);
     });
@@ -851,7 +804,7 @@ ${recentChat}
     return narrative;
   };
 
-  // ─── 關鍵字掃描（掃最近 N 則對話的文字，含玩家輸入）──────────────────────────
+  // ─── 關鍵字掃描 ──────────────────────────────────────────────────────────────
   const scanKeywords = (keywords: string[], scanDepth = 5, extraText = ''): boolean => {
     if (!keywords || keywords.length === 0) return true;
     const recentTexts = messages
@@ -861,21 +814,15 @@ ${recentChat}
     return keywords.some(kw => recentTexts.includes(kw.toLowerCase()));
   };
 
-  // ─── 記憶觸發判斷（含 sticky / cooldown / probability）────────────────────
+  // ─── 記憶觸發判斷 ────────────────────────────────────────────────────────────
   const isMemoryTriggered = (mem: any, userInput = ''): boolean => {
     if (!mem.isActive) return false;
-
-    // cooldown 中：不觸發
     if ((cooldownCounters[mem.id] || 0) > 0) return false;
-
-    // sticky 中：持續觸發（不需要重新判斷關鍵字）
     if ((stickyCounters[mem.id] || 0) > 0) return true;
 
-    // 機率判斷（probability < 100 才需要跑隨機）
     const prob = mem.trigger?.probability ?? 100;
     if (prob < 100 && Math.random() * 100 > prob) return false;
 
-    // 關鍵字判斷（合併所有 tags 的關鍵字）
     const allKeywords = [
       ...(mem.tags?.locations || []),
       ...(mem.tags?.npcs || []),
@@ -890,18 +837,15 @@ ${recentChat}
   const tickMemoryCounters = (triggeredIds: string[]) => {
     setStickyCounters(prev => {
       const next = { ...prev };
-      // 新觸發的記憶：設定 sticky 計數
       triggeredIds.forEach(id => {
         const mem = memories.find(m => m.id === id);
         const sticky = mem?.trigger?.sticky ?? 0;
         if (sticky > 0) next[id] = sticky;
       });
-      // 既有 sticky：倒數
       Object.keys(next).forEach(id => {
         if (!triggeredIds.includes(id) && next[id] > 0) {
           next[id] -= 1;
           if (next[id] === 0) {
-            // sticky 結束，進入 cooldown
             const mem = memories.find(m => m.id === id);
             const cd = mem?.trigger?.cooldown ?? 0;
             if (cd > 0) {
@@ -923,12 +867,10 @@ ${recentChat}
     });
   };
 
-  // ─── Prompt 組裝（只注入當前地點相關內容）────────────────────────────────────
+  // ─── Prompt 組裝 ─────────────────────────────────────────────────────────────
   const buildPrompt = (userInput: string, currentMessages: any[]): string => {
-    const SLIDING_WINDOW = 20; // 只送最近 20 則對話
+    const SLIDING_WINDOW = 20;
 
-    // Lorebook：只注入與當前地點相關，或沒有地點限制的條目
-    // ── Lorebook 觸發判斷（支援 AND 邏輯 + insertion_order 排序）──────────────
     const lorebookScanText = currentMessages.slice(-5).map(m => m.text).join(' ') + ' ' + userInput;
 
     const lorebookHitsKeywords = (e: any): boolean => {
@@ -937,10 +879,8 @@ ${recentChat}
       const selective: boolean = e.selective ?? false;
       const text = lorebookScanText.toLowerCase();
 
-      // 主關鍵字（OR）
       const primaryHit = keys.length === 0 || keys.some(k => text.includes(k.toLowerCase()));
       if (!primaryHit) return false;
-      // AND 邏輯：selective=true 時次要關鍵字也要命中
       if (selective && secKeys.length > 0) {
         return secKeys.some(k => text.includes(k.toLowerCase()));
       }
@@ -950,26 +890,21 @@ ${recentChat}
     const relevantLorebook = lorebookEntries
       .filter(e => {
         if (!e.isActive) return false;
-        // NPC 類：只注入有釘選或在當前場景的
         if (e.category === 'NPC') {
           const inScene = npcs.some(n => n.isPinned && n.name === e.title) ||
                           npcs.some(n => n.location === currentLocation && n.name === e.title);
           if (!inScene) return false;
           return lorebookHitsKeywords(e);
         }
-        // 地點類：標題符合當前地點，且關鍵字命中
         if (e.category === '地點') {
           const locationMatch = currentLocation.includes(e.title) || e.title.includes(currentLocation);
           if (!locationMatch) return false;
           return lorebookHitsKeywords(e);
         }
-        // 其他類：關鍵字命中才注入（若無關鍵字 = 永遠注入）
         return lorebookHitsKeywords(e);
       })
       .sort((a, b) => (a.insertionOrder ?? 100) - (b.insertionOrder ?? 100));
 
-    // 當前地點記憶
-    // 用新記憶系統篩選當前場景相關記憶
     const triggeredMemories = memories.filter(m => isMemoryTriggered(m, userInput));
     const worldMems    = triggeredMemories.filter(m => m.type === 'world');
     const regionMems   = triggeredMemories.filter(m => m.type === 'region');
@@ -977,10 +912,7 @@ ${recentChat}
       (m.tags?.locations || []).some((l: string) => l === currentLocation || currentLocation.includes(l)));
     const npcMems      = triggeredMemories.filter(m => m.type === 'npc');
 
-    // 釘選 NPC
     const pinnedNpcs = npcs.filter(n => n.isPinned);
-
-    // 滑動窗口：只取最近 N 則
     const recentMessages = currentMessages.slice(-SLIDING_WINDOW);
 
     return `[System Context]
@@ -1100,30 +1032,27 @@ Please respond as the DM.`;
       const response = await ai.models.generateContentStream({
         model: 'gemini-2.0-flash',
         contents: prompt,
+        config: { maxOutputTokens: maxTokens },
       });
 
       const aiMessageId = Date.now() + 1;
-      // 先插入空白訊息占位
       setMessages(prev => [...prev, { id: aiMessageId, role: 'system', text: '' }]);
 
       let fullText = '';
       for await (const chunk of response) {
         if (chunk.text) {
           fullText += chunk.text;
-          // 串流時先原始顯示（包含COMMANDS區塊），完成後再解析
           setMessages(prev => prev.map(m =>
             m.id === aiMessageId ? { ...m, text: fullText } : m
           ));
         }
       }
 
-      // 串流結束後：解析 COMMANDS、執行數值變更、更新純敘事文字
       const narrative = parseAndExecuteCommands(fullText);
       setMessages(prev => prev.map(m =>
         m.id === aiMessageId ? { ...m, text: narrative } : m
       ));
 
-      // 更新記憶的 sticky/cooldown 計數器
       const triggeredIds = memories
         .filter(m => isMemoryTriggered(m, inputText))
         .map(m => m.id);
@@ -1418,7 +1347,6 @@ Please respond as the DM.`;
             {messages.map(msg => (
               <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end pl-5' : 'items-start pr-5'} max-w-3xl mx-auto w-full group relative ${activeMenuId === msg.id ? 'z-20' : 'z-0'}`}>
                 
-                {/* Header: Name and Actions */}
                 <div className={`flex items-center space-x-2 mb-1 ${msg.role === 'user' ? 'mr-2 flex-row-reverse space-x-reverse' : 'ml-2'}`}>
                   <span className="text-xs text-stone-500 font-bold">
                     {msg.role === 'user' ? profile.name : '異世界'}
@@ -1446,7 +1374,6 @@ Please respond as the DM.`;
                         <MoreVertical className="w-3.5 h-3.5" />
                       </button>
                       
-                      {/* Dropdown Menu */}
                       {activeMenuId === msg.id && (
                         <div className={`absolute top-full mt-1 w-24 bg-stone-800/90 backdrop-blur-md border border-white/10 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.3)] z-50 overflow-hidden flex flex-col ${msg.role === 'user' ? 'right-0' : 'left-0'}`}>
                           <button 
@@ -1487,7 +1414,6 @@ Please respond as the DM.`;
                   </div>
                 </div>
 
-                {/* Bubble */}
                 <div className={`p-4 rounded-3xl shadow-sm backdrop-blur-sm text-left max-w-full ${
                   editingMessageId === msg.id ? 'w-full' : 'w-fit'
                 } ${
@@ -1533,7 +1459,6 @@ Please respond as the DM.`;
 
           {/* Input Area */}
           <div className="absolute bottom-0 w-full pt-10 pb-4 px-6 flex flex-col items-center z-30">
-            {/* Fading glassmorphism background */}
             <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/60 to-transparent backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)] pointer-events-none -z-10"></div>
             
             <div className="w-full max-w-3xl">
@@ -1577,7 +1502,7 @@ Please respond as the DM.`;
                 </button>
               </div>
 
-              {/* Status Bar (Aligned with Input) */}
+              {/* Status Bar */}
               <div className="mt-3 flex items-center justify-between text-xs text-stone-400 font-mono px-2">
                 <div className="flex items-center space-x-4">
                   <span className="flex items-center" title={`${currentMonthData.name}：${currentMonthData.elegant}`}>
@@ -1635,7 +1560,6 @@ Please respond as the DM.`;
             <div className="mb-4">
               <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider">世界記憶</h4>
               <div className="space-y-2">
-                {/* 月份雅稱與特效 */}
                 <div className="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 p-4 rounded-2xl border border-indigo-500/30 shadow-[0_0_15px_rgba(79,70,229,0.1)] backdrop-blur-sm relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
                     <Sparkles className="w-16 h-16 text-indigo-300" />
@@ -1649,7 +1573,6 @@ Please respond as the DM.`;
                   </p>
                 </div>
 
-                {/* 世界記憶 */}
                 {memories.filter(m => m.type === 'world' && m.isActive).map(mem => (
                   <div key={mem.id} className="bg-stone-800/40 backdrop-blur-sm p-2.5 rounded-xl text-xs text-stone-300 border-l-2 border-indigo-500">
                     {mem.importance === 'critical' && <span className="text-indigo-400 mr-1">★</span>}
@@ -1663,7 +1586,6 @@ Please respond as the DM.`;
               </div>
             </div>
 
-            {/* 區域記憶 */}
             {(() => {
               const regionMems = memories.filter(m =>
                 m.type === 'region' && m.isActive &&
@@ -1686,7 +1608,6 @@ Please respond as the DM.`;
               ) : null;
             })()}
 
-            {/* 場景記憶 */}
             {(() => {
               const sceneMems = memories.filter(m =>
                 m.type === 'scene' && m.isActive &&
@@ -1713,7 +1634,6 @@ Please respond as the DM.`;
               );
             })()}
 
-            {/* NPC 記憶 */}
             {(() => {
               const npcMems = memories.filter(m => m.type === 'npc' && m.isActive);
               return npcMems.length > 0 ? (
@@ -1742,7 +1662,6 @@ Please respond as the DM.`;
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#f4ebd8]/95 backdrop-blur-md w-full max-w-4xl h-[80vh] rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/20 flex flex-col overflow-hidden text-stone-800 relative">
             
-            {/* Close button */}
             <button 
               className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 transition"
               onClick={() => setIsQuestModalOpen(false)}
@@ -1750,11 +1669,8 @@ Please respond as the DM.`;
               ✕
             </button>
 
-            {/* Notebook Styling */}
             <div className="flex-1 flex">
-              {/* Left Page */}
               <div className="flex-1 p-8 border-r border-stone-300/50 relative overflow-y-auto">
-                {/* Binder rings effect */}
                 <div className="absolute right-[-10px] top-10 bottom-10 flex flex-col justify-between w-5 z-10">
                   {[...Array(8)].map((_, i) => (
                     <div key={i} className="h-4 w-full bg-stone-300 rounded-full shadow-inner border border-stone-400"></div>
@@ -1770,7 +1686,6 @@ Please respond as the DM.`;
                 </div>
               </div>
 
-              {/* Right Page */}
               <div className="flex-1 p-8 relative bg-gradient-to-r from-stone-900/5 to-transparent overflow-y-auto">
                 <h2 className="text-3xl font-bold mb-6 text-stone-800 border-b-2 border-stone-800/20 pb-2">任務清單</h2>
                 
@@ -1885,7 +1800,6 @@ Please respond as the DM.`;
             </div>
             
             <div className="p-4 border-b border-white/5 bg-stone-900/30 flex gap-2">
-              {/* 📝 新增日記 */}
               <button
                 onClick={handleAddDiary}
                 className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-stone-800/40 hover:bg-stone-700/50 border border-white/10 hover:border-white/20 transition"
@@ -1894,7 +1808,6 @@ Please respond as the DM.`;
                 <span className="text-[10px] text-stone-400">新增日記</span>
               </button>
 
-              {/* 🔮 水晶球日記 */}
               <button
                 onClick={handleGenerateDiary}
                 disabled={isDiaryGenerating}
@@ -1904,7 +1817,6 @@ Please respond as the DM.`;
                 <span className="text-[10px] text-purple-300">水晶球日記</span>
               </button>
 
-              {/* 💫 融合日記 */}
               <button
                 onClick={() => {
                   if (isDiaryMergeMode) {
@@ -1921,7 +1833,6 @@ Please respond as the DM.`;
               </button>
             </div>
 
-            {/* 融合模式：確認 / 取消列 */}
             {isDiaryMergeMode && (
               <div className="px-4 pb-3 flex items-center justify-between bg-stone-900/30 border-b border-white/5">
                 <span className="text-xs text-stone-400">
@@ -1947,7 +1858,6 @@ Please respond as the DM.`;
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {diaryEntries.map(entry => {
-                // 融合日記：展開顯示來源
                 const isMergedEntry = entry.source === 'merged' && entry.mergedFrom?.length > 0;
                 const isExpanded = expandedMergedIds.includes(entry.id);
                 const sourceDiaries = isMergedEntry
@@ -1961,7 +1871,6 @@ Please respond as the DM.`;
                   entry.source === 'merged' ? 'border-amber-500/30' :
                   entry.isActive ? 'border-amber-500/50' : 'border-white/5'
                 }`}>
-                  {/* isActive 勾選（左上）*/}
                   <div className="flex flex-col gap-2 flex-shrink-0">
                     <button 
                       onClick={() => handleToggleDiary(entry.id)}
@@ -1970,7 +1879,6 @@ Please respond as the DM.`;
                     >
                       {entry.isActive ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                     </button>
-                    {/* 融合模式勾選（左下）*/}
                     {isDiaryMergeMode && !entry.isMerged && (
                       <button
                         onClick={() => setDiaryMergeSelection(prev =>
@@ -1989,7 +1897,6 @@ Please respond as the DM.`;
                   <div className="flex-1 flex flex-col">
                     {editingDiaryId === entry.id ? (
                       <div className="flex flex-col gap-2">
-                        {/* 內容輸入 */}
                         <textarea 
                           value={entry.text}
                           onChange={(e) => handleDiaryChange(entry.id, e.target.value)}
@@ -2006,12 +1913,10 @@ Please respond as the DM.`;
                           }}
                         />
 
-                        {/* 關鍵字區塊 */}
                         <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5">
                           <div className="text-[10px] text-stone-400 mb-2 uppercase tracking-wider">
                             觸發關鍵字 <span className="text-stone-600 normal-case">（空白 = 勾選後永遠注入）</span>
                           </div>
-                          {/* 現有標籤 */}
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {(entry.keywords || []).map((kw: string) => (
                               <span key={kw} className="flex items-center gap-1 bg-indigo-900/50 border border-indigo-500/40 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
@@ -2023,7 +1928,6 @@ Please respond as the DM.`;
                               </span>
                             ))}
                           </div>
-                          {/* 新增關鍵字輸入 */}
                           <input
                             type="text"
                             placeholder="輸入關鍵字後按 Enter..."
@@ -2056,7 +1960,6 @@ Please respond as the DM.`;
                         title="雙擊以編輯"
                       >
                         {entry.text || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
-                        {/* 關鍵字標籤（檢視模式） */}
                         {(entry.keywords || []).length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {(entry.keywords || []).map((kw: string) => (
@@ -2075,11 +1978,9 @@ Please respond as the DM.`;
                   </div>
                   
                   <div className="flex flex-col gap-1 flex-shrink-0">
-                    {/* isMerged 標記 */}
                     {entry.isMerged && (
                       <span className="text-[9px] text-stone-500 px-1">已融合</span>
                     )}
-                    {/* 融合日記展開按鈕 */}
                     {isMergedEntry && (
                       <button
                         onClick={() => setExpandedMergedIds(prev =>
@@ -2103,7 +2004,6 @@ Please respond as the DM.`;
                   </div>
                 </div>
 
-                {/* 融合來源展開列表 */}
                 {isMergedEntry && isExpanded && sourceDiaries.map(src => (
                   <div key={src.id} className="ml-8 bg-stone-900/30 border border-white/5 rounded-xl p-3 text-xs text-stone-500 whitespace-pre-wrap">
                     {src.text || <span className="italic">（空白）</span>}
@@ -2265,7 +2165,6 @@ Please respond as the DM.`;
                         {/* ── 觸發關鍵字區塊 ── */}
                         <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5 space-y-3">
                           
-                          {/* 主關鍵字 */}
                           <div>
                             <div className="text-[10px] text-stone-400 mb-1.5 uppercase tracking-wider">
                               主關鍵字 <span className="text-stone-600 normal-case">（OR，任一命中即觸發；空白 = 依地點/NPC規則）</span>
@@ -2283,7 +2182,6 @@ Please respond as the DM.`;
                               onKeyDown={(e) => { if (e.key === 'Enter') { handleLorebookKeywordAdd(entry.id, 'keywords', e.currentTarget.value); e.currentTarget.value = ''; }}} />
                           </div>
 
-                          {/* selective toggle + 次要關鍵字 */}
                           <div>
                             <div className="flex items-center gap-2 mb-1.5">
                               <button
@@ -2311,7 +2209,6 @@ Please respond as the DM.`;
                             )}
                           </div>
 
-                          {/* Insertion Order */}
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] text-stone-400 uppercase tracking-wider whitespace-nowrap">注入順序</span>
                             <input
@@ -2368,7 +2265,6 @@ Please respond as the DM.`;
                             {entry.content || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
                           </div>
                         )}
-                        {/* 關鍵字標籤（檢視模式） */}
                         {((entry.keywords || []).length > 0 || (entry.secondaryKeys || []).length > 0) && (
                           <div className="flex flex-wrap gap-1 mt-1.5 px-2">
                             {(entry.keywords || []).map((kw: string) => (
@@ -2491,7 +2387,6 @@ Please respond as the DM.`;
                 </div>
               )}
 
-              {/* Memory Bank Section */}
               <div className="mt-6 border-t border-white/5 pt-6">
                 {selectedNpc.affection > 60 ? (
                   <div>
@@ -2674,6 +2569,34 @@ Please respond as the DM.`;
                 </p>
               </div>
 
+              {/* Token 上限設定 */}
+              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-3">
+                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center gap-2">
+                  <span>📊</span> Token 輸出上限
+                </label>
+                <div className="flex gap-2">
+                  {TOKEN_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        setMaxTokens(opt.value);
+                        localStorage.setItem('gemini_max_tokens', String(opt.value));
+                      }}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition ${
+                        maxTokens === opt.value
+                          ? 'bg-indigo-600/80 border-indigo-500 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]'
+                          : 'bg-stone-900/50 border-white/10 text-stone-400 hover:border-indigo-500/40 hover:text-stone-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-stone-600 leading-relaxed">
+                  較高的上限允許 AI 產生更長的回應，但會消耗更多 API 額度。
+                </p>
+              </div>
+
               <div className="border-t border-white/5 pt-2" />
 
               <button 
@@ -2743,11 +2666,9 @@ Please respond as the DM.`;
                 <div className="flex-[2] border-b md:border-b-0 md:border-r border-stone-700 relative bg-stone-950 overflow-hidden group">
                   <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                   
-                  {/* Map Content */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="relative w-[600px] h-[600px] border border-stone-800/50 rounded-full bg-stone-900/30">
                       {worldMap.fixed.map(loc => {
-                        // Map coordinates (-150 to 150) to percentage (0% to 100%)
                         const left = `${((loc.x + 150) / 300) * 100}%`;
                         const top = `${((-loc.y + 150) / 300) * 100}%`;
                         
@@ -2772,7 +2693,6 @@ Please respond as the DM.`;
                     </div>
                   </div>
                   
-                  {/* Legend / Info */}
                   <div className="absolute bottom-4 left-4 bg-stone-900/80 backdrop-blur-md border border-white/10 p-3 rounded-2xl text-xs space-y-2 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
                     <div className="font-bold text-stone-300 mb-1">地圖圖例</div>
                     <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-emerald-400 mr-2"></div> 起點</div>
@@ -2785,7 +2705,6 @@ Please respond as the DM.`;
                 {/* Right Column: Lists & Calculator */}
                 <div className="flex-[1] flex flex-col bg-stone-900 overflow-hidden">
                   
-                  {/* Travel Calculator */}
                   <div className="p-4 border-b border-stone-700 bg-stone-800/50">
                     <h3 className="text-sm font-bold text-stone-300 mb-3 flex items-center">
                       <Navigation className="w-4 h-4 mr-2 text-indigo-400" /> 旅行時間計算
@@ -2824,9 +2743,7 @@ Please respond as the DM.`;
                     </div>
                   </div>
 
-                  {/* Location Lists */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                    {/* Fixed Locations */}
                     <div className="space-y-3">
                       <h3 className="text-xs font-bold text-stone-400 border-b border-stone-700 pb-2 flex items-center uppercase tracking-wider">
                         <Globe className="w-3.5 h-3.5 mr-1.5" /> 已知世界地標
@@ -2854,7 +2771,6 @@ Please respond as the DM.`;
                       </div>
                     </div>
 
-                    {/* Dynamic Locations */}
                     <div className="space-y-3">
                       <h3 className="text-xs font-bold text-stone-400 border-b border-stone-700 pb-2 flex items-center uppercase tracking-wider">
                         <MapPin className="w-3.5 h-3.5 mr-1.5" /> 旅途發現 (動態)
