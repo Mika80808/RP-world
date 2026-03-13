@@ -5,7 +5,28 @@
 
 ---
 
-## [2026-03-13] v7（當前版本）
+## [2026-03-13] v8（當前版本）
+
+### 新增 NPC「角色想法」功能
+實作 NPC 內心想法系統，讓 AI 在後續對話中能維持該 NPC 的態度與立場。
+- **資料結構**：新增 `relationship`、`lastSeenLocation`、`lastSeenDate` 與 `thoughts` 欄位。
+- **指令解析**：新增 `NPC_THOUGHT` 指令，AI 可動態寫入 NPC 的內心想法（最多保留 5 則）。
+- **自動更新**：對話結束後，自動更新有被提及的 NPC 的「上次見面地點與日期」。
+- **Prompt 注入**：在 `buildPrompt` 中將 NPC 的近期想法注入給 AI 參考。
+- **UI 改版**：更新 `NpcModal` 介面，新增關係、上次見面資訊，以及底部漸層透明度的「💭 角色想法」卡片區塊。
+
+### 任務系統動態化
+新增 `QUEST_ADD` 與 `QUEST_COMPLETE` 指令，讓 AI 能動態發布與完成任務。任務狀態（進行中、已完成）將同步顯示於任務面板中。
+
+### Prompt 記憶寫入規則
+在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則，包含五種情境（世界事件、區域事件、場景狀態改變、NPC 情報、玩家重要事件），並特別規定當 AI 回應裡出現 `[ ]` 布告欄內容時，必定觸發 `MEMORY_ADD:region`。
+
+### Scrollbar 樣式統一
+在 `src/index.css` 新增全域捲軸樣式，使用 `::-webkit-scrollbar` 自訂滾動條，配合現有黑色系 UI，提升整體視覺一致性。
+
+---
+
+## [2026-03-13] v7
 
 ### 本機開發環境建立
 安裝 Node.js 與 GitHub CLI（`gh`），設定 `.claude/launch.json` 讓 Claude Code 可直接啟動 Vite dev server（port 3001）並即時預覽。

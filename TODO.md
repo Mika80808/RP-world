@@ -13,8 +13,9 @@
 
 ## 💬 待討論／待規劃
 
-- [ ] **Scrollbar 樣式統一**
+- [x] **Scrollbar 樣式統一**
   用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有黑色系 UI。
+  2026-03-13 Gemini: 在 `src/index.css` 新增全域捲軸樣式，配合深色系 UI。
 
 - [ ] **世界地圖視覺化**
   目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
@@ -25,7 +26,7 @@
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
 
-- [ ] **新增NPC「角色想法」功能**
+- [x] **新增NPC「角色想法」功能**
 
   **功能意義**：NPC 即時產生的內心想法，讓 AI 在後續對話中能維持該 NPC 的態度與立場。
 
@@ -63,6 +64,7 @@
     - 5 則卡片，最新在最上方，越舊透明度越低（1.0 / 0.85 / 0.7 / 0.55 / 0.4）
     - 每則卡片：`border-left: 2px solid rose-400`、背景 `bg-secondary`、想法文字加「」書名號、右下角顯示日期（`M/D`）
     - 無想法時顯示灰色斜體「不知道在想什麼」
+  2026-03-13 Gemini: 實作 NPC 角色想法功能，包含資料結構更新、UI 呈現、`NPC_THOUGHT` 指令解析、自動更新上次見面時間地點，以及 Prompt 注入。
 
 - [ ] **更多前端處理項目**
   - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
@@ -75,14 +77,16 @@
 
 ## 🔴 高優先
 
-- [ ] **Prompt 記憶寫入規則**
+- [x] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
   包含五種情境：世界事件 / 區域事件 / 場景狀態改變 / NPC 情報 / 玩家重要事件。
   特別規則：AI 回應裡出現 `[ ]` 布告欄內容時，必定觸發 `MEMORY_ADD:region`。
+  2026-03-13 Gemini: 在 `buildPrompt` 的 COMMAND FORMAT 區塊新增【AI 何時應輸出 MEMORY_ADD】說明，定義五大情境與布告欄觸發規則。
 
-- [ ] **任務系統動態化**
+- [x] **任務系統動態化**
   目前任務 Modal 為空白。
   需要：AI 可透過 COMMANDS 寫入任務（新增 `QUEST_ADD` / `QUEST_COMPLETE` 指令）、右側或 Modal 顯示任務列表。
+  2026-03-13 Gemini: 新增 `quests` state，在 `parseAndExecuteCommands` 實作 `QUEST_ADD` 與 `QUEST_COMPLETE` 解析，並傳遞至 `QuestModal` 顯示進行中、可接取、已完成任務。
 
 ---
 

@@ -2,6 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Settings, Save, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package, Beaker, Globe, Users, Heart, MapPin, Zap, Coins, Calendar, Shield, Plus, Trash2, CheckSquare, Square, Download, Upload, RotateCcw, Lock, ChevronDown, ChevronRight, Map as MapIcon, Navigation, Cloud, Sun, CloudRain, Snowflake, Moon, Wind, Leaf, Star, Sparkles, Pin, Brain, Search, BookPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
+import { DiaryModal } from './components/DiaryModal';
+import { LorebookModal, LorebookEntry } from './components/LorebookModal';
+import { NpcModal, Npc } from './components/NpcModal';
+import { QuestModal, Quest } from './components/QuestModal';
+import { ProfileModal, Profile } from './components/ProfileModal';
+import { SystemPromptModal, SystemPrompt } from './components/SystemPromptModal';
+import { SettingsModal } from './components/SettingsModal';
+import { MapModal, WorldMap } from './components/MapModal';
 
 // ─── Markdown Parser ─────────────────────────────────────────────────────────
 
@@ -80,7 +88,7 @@ export default function App() {
   const [isConsumablesOpen, setIsConsumablesOpen] = useState(false);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<string | null>(null);
   const [selectedConsumableItem, setSelectedConsumableItem] = useState<string | null>(null);
-  const [selectedNpc, setSelectedNpc] = useState<any>(null);
+  const [selectedNpc, setSelectedNpc] = useState<Npc | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
     const saved = localStorage.getItem('rpworld_last_saved');
@@ -158,7 +166,7 @@ export default function App() {
     return <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-500 opacity-50" />;
   };
 
-  const [npcs, setNpcs] = useState<any[]>(() => _s?.npcs || []);
+  const [npcs, setNpcs] = useState<Npc[]>(() => _s?.npcs || []);
 
   const [currentLocation, setCurrentLocation] = useState(() => _s?.currentLocation || '迷霧森林');
 
@@ -183,7 +191,9 @@ export default function App() {
   const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
   const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
 
-  const [profile, setProfile] = useState(() => _s?.profile || {
+  const [quests, setQuests] = useState<Quest[]>(() => _s?.quests || []);
+
+  const [profile, setProfile] = useState<Profile>(() => _s?.profile || {
     name: '異鄉人',
     job: '異鄉人',
     appearance: '',
@@ -194,20 +204,15 @@ export default function App() {
     gold: 0
   });
 
-  const [systemPrompt, setSystemPrompt] = useState(() => _s?.systemPrompt || {
+  const [systemPrompt, setSystemPrompt] = useState<SystemPrompt>(() => _s?.systemPrompt || {
     worldPremise: '這是一個奇幻異世界，{{user}}將在不知情的情況下探索這個異世界、完成任務、與角色發展關係與感情。\n- 這個異世界由某種高維智慧所維護。\n- 異鄉人來自現實世界，具備基本常識，但對異世界完全陌生。\n- 世界中存在童話故事的變體，例如小紅帽、美人魚等，但劇情與角色可能出現劇情偏移或性格改變。\n- 世界設有主要據點（如中心城鎮）與可探索地區（森林、湖泊、荒原、山區等），每區域對應一組主題任務。\n- 也有許多異世界異鄉人選擇留下(例如成家立業等等)\n- 需體現角色特性，每個種族有特殊的外型特徵和文化習俗，讓角色具有特色。',
     roleplayRules: '1. 情感深度： 所有角色（含引路者）都可自由與{{user}}建立並發展多元情感。\n2. 劇情驅動： 確保每一次互動都至少為故事增添了一個新資訊、一個新懸念、或是一個人物關係的微小變化。\n3. 角色的自主性:\n- 每位角色具備獨特個性、習慣、目標、怪癖、慾望及社會地位。藉由角色與環境或人物的互動展現其身分、能力與特質，賦予存在價值。\n- 角色擁有獨立日常作息與目標。即使和{{user}}沒有互動，角色也會繼續生活、執行事務，其行動可能與{{user}}的行動交匯或觸發新情節。世界不只圍繞{{user}}的即時行動運轉。\n- 我與角色互動時，場景不僅限於兩人對話，其他角色可能隨時加入、插話、離開或分心。\n4. 人性化的理解力：在日常休閒或私人的社交情境中，優先將我的想法理解為其**內在真實情感**的流露，而非帶有隱藏目的的策略。展現出人性化的理解與共情，但敵對角色不受此限制。\n5. 世界的動態性：\n- Player Decentralization，世界有自己的時鐘和日程表。\n- Emergent Narrative，突發事件與環境變化隨時發生，確保不可預測性與真實流動感。\n6. 任務：\n- 日常任務：以輕鬆方式引導我探索世界，豐富內容，增強沉浸感。\n- 大型任務：將對故事產生影響，事件發生的前因後果及背景邏輯須合理。\n7. NPC生成：當AI生成新NPC時，需必備：姓名、性別、年齡、種族、職業、外貌、個性。\n8. NPC記錄門檻：若AI生成的新NPC具備明確姓名、職業，且會固定出現在特定場所（如店鋪老闆、公會負責人等），請在對話中特別標註 [重要NPC]。\n\n## 親密內容\n- 確保所有成人親密內容均服務於敘事和人物發展，角色行為須符合人物設定。\n- 在親密場景中使用真實、細膩且生動的措詞，器官名稱可使用生物學名。\n- 情侶之間的親密行為，是互相引誘、探索、取悅的過程，角色需依照兩人關係調整學習曲線，避免模式僵化。\n- Slowburn. Prolong all aspects of the back-and-forth journey of sex (foreplay, actions, climax)—orgasm is not the goal.',
     writingStyle: `每回合輸出：\n- 使用繁體中文，小說體，1000字左右的故事內容，保持句子完整流暢。\n- 描述接下來場景發生的事，不須重複{{user}}給出的內容。\n- 描寫角色們，寫出精確、逼真的細節來創造生動的場景和可信的人物，使用生動的感官細節，創造沉浸式體驗。\n- 保持故事節奏，不要跳躍太快。\n- 角色們需主動和異鄉人互動，結尾須保持開放性。\n- 文筆須豐富多彩、描述感情時須內斂。\n- 嚴禁結束章節，Avoid meta dialogue — story should stay fully immersed in it's own reality.`
   });
 
   const [diaryEntries, setDiaryEntries] = useState<any[]>(() => _s?.diaryEntries || []);
-  const [editingDiaryId, setEditingDiaryId] = useState<number | null>(null);
-  const [isDiaryMergeMode, setIsDiaryMergeMode] = useState(false);
-  const [diaryMergeSelection, setDiaryMergeSelection] = useState<number[]>([]);
-  const [isDiaryGenerating, setIsDiaryGenerating] = useState(false);
-  const [expandedMergedIds, setExpandedMergedIds] = useState<number[]>([]);
 
-  const [lorebookEntries, setLorebookEntries] = useState<any[]>(() => _s?.lorebookEntries || [
+  const [lorebookEntries, setLorebookEntries] = useState<LorebookEntry[]>(() => _s?.lorebookEntries || [
     { id: 1, title: '月湖鎮', content: '世界中心，醉醺醺酒館、任務板(日常任務)、情報來源、各類店家、住宅與商店街混合，在這裡可以見到各種奇幻種族。外圍有各種公會的據點，例如異鄉人公會、獵人公會、冒險者公會等等。西邊外圍有成人紅燈區。', category: '地點', isActive: true },
     { id: 2, title: '迷霧森林', content: '小紅帽副本：公會奶奶負責保管紅色斗篷，獵人公會訓練出來的學徒，每年都會派一位代表披上「紅斗篷」，跟狼族學徒決鬥一次(切磋性質)', category: '地點', isActive: true },
     { id: 3, title: '狼族領地', content: '黑牙氏族領地，非請勿擾', category: '地點', isActive: true },
@@ -245,9 +250,7 @@ export default function App() {
     { id: 38, title: '巴克', job: '廚師', appearance: '身材魁梧，灰綠色皮膚，下顎有兩顆小獠牙。', personality: '沉默寡言，但內心認可勤勞的人。經驗老道，直覺敏銳。', other: '半獸人。廚師。', category: 'NPC', isActive: true },
     { id: 39, title: '魔王', job: '魔王', appearance: '失序谷魔王。外貌與性別可隨意變換，但無論如何變化，都會維持在一個「好看」的狀態。', personality: '聰明但散漫。混亂邪惡，但偏向樂子人，懶得親手害死誰，更享受戲弄別人帶來的樂趣。其領地的氛圍也因此顯得「歡樂鬆散」。', other: '會根據魔物特性，讓他們各司其職去工作。外貌協會：對「美」有著極高的標準，偏愛所有好看的外表。這一點也體現在他的城堡守則上——只有外貌姣好者才能進入。曾因為想作亂，和引路者有些「曲折的過去」，單方面認為自己跟「引路者」是歡喜冤家(同樣都活太久)。', category: 'NPC', isActive: true }
   ]);
-  const [editingLorebookId, setEditingLorebookId] = useState<number | null>(null);
-  const [lorebookFilter, setLorebookFilter] = useState<string>('地點');
-  const [lorebookSearch, setLorebookSearch] = useState<string>('');
+
 
   const [inventory, setInventory] = useState<any[]>(() => _s?.inventory || []);
 
@@ -269,7 +272,7 @@ export default function App() {
   }, [messages]);
 
   // Mock World Map Data
-  const [worldMap, setWorldMap] = useState({
+  const [worldMap, setWorldMap] = useState<WorldMap>({
     fixed: [
       { id: 'moon_lake', name: '月湖鎮', type: 'town', x: 0, y: 0, desc: '世界中心，醉醺醺酒館、任務板、情報來源、各類店家。外圍有各種公會據點。包含「異鄉人公寓」。' },
       { id: 'mist_forest', name: '迷霧森林', type: 'danger', x: 100, y: 50, desc: '小紅帽副本：公會奶奶負責保管紅色斗篷，每年派代表與狼族決鬥。' },
@@ -329,7 +332,7 @@ export default function App() {
   const handleAddDiary = () => {
     const newId = Date.now();
     setDiaryEntries([{ id: newId, text: '', isActive: true, keywords: [] }, ...diaryEntries]);
-    setEditingDiaryId(newId);
+    return newId;
   };
 
   const handleDiaryKeywordAdd = (id: number, keyword: string) => {
@@ -352,7 +355,6 @@ export default function App() {
 
   const handleDeleteDiary = (id: number) => {
     setDiaryEntries(diaryEntries.filter(entry => entry.id !== id));
-    if (editingDiaryId === id) setEditingDiaryId(null);
   };
 
   const handleToggleDiary = (id: number) => {
@@ -365,7 +367,6 @@ export default function App() {
   const handleGenerateDiary = async () => {
     const key = geminiApiKey.trim() || process.env.GEMINI_API_KEY || '';
     if (!key) { showToast('❌ 請先設定 Gemini API Key'); return; }
-    setIsDiaryGenerating(true);
     try {
       const ai = new GoogleGenAI({ apiKey: key });
       const recentChat = messages.slice(-20).map(m =>
@@ -425,17 +426,15 @@ ${recentChat}
       showToast('🔮 水晶球日記已生成');
     } catch (e) {
       showToast('❌ 生成失敗，請稍後再試');
-    } finally {
-      setIsDiaryGenerating(false);
     }
   };
 
   // ─── 💫 融合日記：合併多條日記 ─────────────────────────────────────────────
-  const handleMergeDiary = async () => {
-    if (diaryMergeSelection.length < 2) { showToast('請勾選至少 2 條日記'); return; }
+  const handleMergeDiary = async (selectedIds: number[]) => {
+    if (selectedIds.length < 2) { showToast('請勾選至少 2 條日記'); return; }
     const key = geminiApiKey.trim() || process.env.GEMINI_API_KEY || '';
     if (!key) { showToast('❌ 請先設定 Gemini API Key'); return; }
-    const selected = diaryEntries.filter(e => diaryMergeSelection.includes(e.id));
+    const selected = diaryEntries.filter(e => selectedIds.includes(e.id));
     const combined = selected.map((e, i) => `[日記 ${i + 1}]\n${e.text}`).join('\n\n---\n\n');
     try {
       const ai = new GoogleGenAI({ apiKey: key });
@@ -447,7 +446,7 @@ ${recentChat}
       });
       const text = response.text || '';
       const newId = Date.now();
-      const sourceIds = diaryMergeSelection.slice();
+      const sourceIds = selectedIds.slice();
       setDiaryEntries(prev => [
         {
           id: newId,
@@ -463,8 +462,6 @@ ${recentChat}
             : e
         )
       ]);
-      setDiaryMergeSelection([]);
-      setIsDiaryMergeMode(false);
       showToast('💫 融合日記已生成');
     } catch (e) {
       showToast('❌ 融合失敗，請稍後再試');
@@ -477,21 +474,20 @@ ${recentChat}
     ));
   };
 
-  const handleAddLorebook = () => {
+  const handleAddLorebook = (category: string) => {
     const newId = Date.now();
-    setLorebookEntries([{ id: newId, title: '新設定', content: '', category: lorebookFilter, isActive: true, insertionOrder: 100, selective: false, secondaryKeys: [] }, ...lorebookEntries]);
-    setEditingLorebookId(newId);
+    setLorebookEntries([{ id: newId, title: '新設定', content: '', category, isActive: true, insertionOrder: 100, selective: false, secondaryKeys: [] }, ...lorebookEntries]);
+    return newId;
+  };
+
+  const handleUpdateLorebook = (id: number, updates: Partial<LorebookEntry>) => {
+    setLorebookEntries(prev => prev.map(entry => 
+      entry.id === id ? { ...entry, ...updates } : entry
+    ));
   };
 
   const handleDeleteLorebook = (id: number) => {
-    setLorebookEntries(lorebookEntries.filter(entry => entry.id !== id));
-    if (editingLorebookId === id) setEditingLorebookId(null);
-  };
-
-  const handleToggleLorebook = (id: number) => {
-    setLorebookEntries(lorebookEntries.map(entry => 
-      entry.id === id ? { ...entry, isActive: !entry.isActive } : entry
-    ));
+    setLorebookEntries(prev => prev.filter(entry => entry.id !== id));
   };
 
   const handleLorebookKeywordAdd = (id: number, field: 'keywords'|'secondaryKeys', kw: string) => {
@@ -508,19 +504,13 @@ ${recentChat}
     ));
   };
 
-  const handleLorebookChange = (id: number, field: string, value: string) => {
-    setLorebookEntries(lorebookEntries.map(entry => 
-      entry.id === id ? { ...entry, [field]: value } : entry
-    ));
-  };
-
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleQuickSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
     localStorage.setItem('rpworld_save', JSON.stringify(saveData));
     const now = new Date();
     localStorage.setItem('rpworld_last_saved', now.toISOString());
@@ -529,7 +519,7 @@ ${recentChat}
   };
 
   const handleExportSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState };
+    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -601,6 +591,7 @@ ${recentChat}
         }
         if (saveData.quickOptions) setQuickOptions(saveData.quickOptions);
         if (saveData.timeState) setTimeState(saveData.timeState);
+        if (saveData.quests) setQuests(saveData.quests);
         showToast('存檔已匯入');
         setIsSettingsModalOpen(false);
       } catch (error) {
@@ -668,7 +659,7 @@ ${recentChat}
     }
   };
 
-  const handleRecordNpc = (npc: any) => {
+  const handleRecordNpc = (npc: Npc) => {
     const exists = lorebookEntries.some(e => e.category === 'NPC' && e.title === npc.name);
     if (exists) {
       showToast('此人物已在設定集中');
@@ -875,6 +866,54 @@ ${recentChat}
         toastQueue.push(`📝 新增${rawType === 'world' ? '世界' : rawType === 'region' ? '區域' : rawType === 'scene' ? '場景' : 'NPC'}記憶`);
         continue;
       }
+
+      const questAddMatch = cmd.match(/^QUEST_ADD:(.+):(.+)$/i);
+      if (questAddMatch) {
+        const [, title, description] = questAddMatch;
+        setQuests(prev => {
+          const exists = prev.find(q => q.title === title.trim());
+          if (exists) return prev;
+          return [...prev, {
+            id: `quest_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+            title: title.trim(),
+            description: description.trim(),
+            status: 'active',
+            createdAt: `帝國曆 ${timeState.year}年${timeState.month}月${timeState.day}日`
+          }];
+        });
+        toastQueue.push(`📜 新增任務：${title.trim()}`);
+        continue;
+      }
+
+      const questCompleteMatch = cmd.match(/^QUEST_COMPLETE:(.+)$/i);
+      if (questCompleteMatch) {
+        const [, title] = questCompleteMatch;
+        setQuests(prev => prev.map(q => 
+          q.title === title.trim() ? { ...q, status: 'completed' } : q
+        ));
+        toastQueue.push(`✅ 完成任務：${title.trim()}`);
+        continue;
+      }
+
+      const npcThoughtMatch = cmd.match(/^NPC_THOUGHT:(.+):(.+)$/i);
+      if (npcThoughtMatch) {
+        const [, name, text] = npcThoughtMatch;
+        setNpcs(prev => prev.map(npc => {
+          if (npc.name.includes(name.trim()) || name.trim().includes(npc.name)) {
+            const newThought = {
+              text: text.trim(),
+              createdAt: `${timeState.month}/${timeState.day}`
+            };
+            const currentThoughts = npc.thoughts || [];
+            return {
+              ...npc,
+              thoughts: [newThought, ...currentThoughts].slice(0, 5)
+            };
+          }
+          return npc;
+        }));
+        continue;
+      }
     }
 
     if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
@@ -1061,15 +1100,22 @@ ${npcMems.length > 0 ? npcMems.map(m => `- ${m.content}${m.tags?.npcs?.length ? 
 [Scene Lorebook]
 ${relevantLorebook.map(e => {
   if (e.category === 'NPC') {
-    return `[NPC] ${e.title}｜職業：${e.job || ''}｜外貌：${e.appearance || ''}｜個性：${e.personality || ''}｜備註：${e.other || ''}`;
+    const npcData = npcs.find(n => n.name === e.title);
+    const thoughtsText = npcData?.thoughts && npcData.thoughts.length > 0
+      ? `｜[近期想法] ${npcData.thoughts.map((t, i) => `${i + 1}.${t.text}`).join(' / ')}`
+      : '';
+    return `[NPC] ${e.title}｜職業：${e.job || ''}｜外貌：${e.appearance || ''}｜個性：${e.personality || ''}｜備註：${e.other || ''}${thoughtsText}`;
   }
   return `[${e.category}] ${e.title}：${e.content}`;
 }).join('\n') || '（無）'}
 
 [Pinned NPCs]
-${pinnedNpcs.length > 0 ? pinnedNpcs.map(n =>
-  `- ${n.name}（${n.job}）好感度:${n.affection}｜${n.memories?.length > 0 ? '記憶: ' + n.memories.join(' / ') : ''}`
-).join('\n') : '（無）'}
+${pinnedNpcs.length > 0 ? pinnedNpcs.map(n => {
+  const thoughtsText = n.thoughts && n.thoughts.length > 0
+    ? `｜[近期想法] ${n.thoughts.map((t, i) => `${i + 1}.${t.text}`).join(' / ')}`
+    : '';
+  return `- ${n.name}（${n.job}）好感度:${n.affection}｜${n.memories?.length > 0 ? '記憶: ' + n.memories.join(' / ') : ''}${thoughtsText}`;
+}).join('\n') : '（無）'}
 
 ---
 [Active Diary]
@@ -1101,11 +1147,27 @@ AFFINITY:角色名:+10
 LOCATION:新地點名稱
 TIME:+1h
 ITEM_ADD:道具名:1:說明文字
+QUEST_ADD:任務名稱:任務描述
+QUEST_COMPLETE:任務名稱
+NPC_THOUGHT:角色名:一句話內心想法
 MEMORY_ADD:region:normal:迷霧森林昨日大火，黑牙氏族前往支援:locations=迷霧森林:factions=黑牙氏族:keywords=大火,火災:sticky=3
 MEMORY_ADD:scene:normal:酒館因打架暫時關閉:locations=酒館
 MEMORY_ADD:npc:normal:芬里爾透露停火協議內容:npcs=芬里爾:keywords=停火,協議
 MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 <</COMMANDS>>
+
+【AI 何時應輸出 NPC_THOUGHT】
+當 NPC 有明顯情緒變化、做出重要決定、或對玩家產生新看法時，以第一人稱輸出一句話內心想法。
+
+【AI 何時應輸出 MEMORY_ADD】
+當發生以下五種情境時，請務必使用 MEMORY_ADD 記錄：
+1. 世界事件 (world)：影響整個世界的重大變故（如：魔王宣戰、天象異變）。
+2. 區域事件 (region)：特定區域的動態變化（如：森林大火、城鎮慶典）。
+   * 特別規則：若你的回應裡出現 `[ ]` 格式的布告欄內容或公告時，必定觸發 `MEMORY_ADD:region` 將其記錄下來。
+3. 場景狀態改變 (scene)：當前地點的物理或狀態改變（如：酒館被砸毀、橋樑斷裂）。
+4. NPC 情報 (npc)：NPC 透露的關鍵秘密、身世或重要決定。
+5. 玩家重要事件 (world/region/npc)：玩家達成的重大成就、做出的關鍵選擇，或與 NPC 關係的重大突破。
+
 若需要提供玩家行動建議，請在回應最後面輸出選項區塊，格式如下（請不要加上數字編號，限制在10字以內，以簡單動作為主）：
 <<OPTIONS>>
 選項一
@@ -1160,6 +1222,17 @@ Please respond as the DM.`;
       setMessages(prev => prev.map(m =>
         m.id === aiMessageId ? { ...m, text: narrative } : m
       ));
+
+      setNpcs(prev => prev.map(npc => {
+        if (narrative.includes(npc.name)) {
+          return {
+            ...npc,
+            lastSeenLocation: currentLocation,
+            lastSeenDate: `${timeState.month}/${timeState.day}`
+          };
+        }
+        return npc;
+      }));
 
       const triggeredIds = memories
         .filter(m => isMemoryTriggered(m, inputText))
@@ -1778,1160 +1851,89 @@ Please respond as the DM.`;
       </div>
 
       {/* Quest Modal Overlay */}
-      {isQuestModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#f4ebd8]/95 backdrop-blur-md w-full max-w-4xl h-[80vh] rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/20 flex flex-col overflow-hidden text-stone-800 relative">
-            
-            <button 
-              className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 transition"
-              onClick={() => setIsQuestModalOpen(false)}
-            >
-              ✕
-            </button>
-
-            <div className="flex-1 flex">
-              <div className="flex-1 p-8 border-r border-stone-300/50 relative overflow-y-auto">
-                <div className="absolute right-[-10px] top-10 bottom-10 flex flex-col justify-between w-5 z-10">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="h-4 w-full bg-stone-300 rounded-full shadow-inner border border-stone-400"></div>
-                  ))}
-                </div>
-
-                <h2 className="text-3xl font-bold mb-6 text-stone-800 border-b-2 border-stone-800/20 pb-2">進行中任務</h2>
-                
-                <div className="space-y-6">
-                  <div className="text-center text-stone-500 py-10">
-                    目前沒有進行中的任務。
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 p-8 relative bg-gradient-to-r from-stone-900/5 to-transparent overflow-y-auto">
-                <h2 className="text-3xl font-bold mb-6 text-stone-800 border-b-2 border-stone-800/20 pb-2">任務清單</h2>
-                
-                <div className="space-y-4">
-                  <h4 className="font-bold text-stone-500 uppercase tracking-widest text-sm mb-2">可接取</h4>
-                  <ul className="space-y-2">
-                    <li className="text-sm text-stone-500 italic p-3">目前沒有可接取的任務</li>
-                  </ul>
-
-                  <h4 className="font-bold text-stone-500 uppercase tracking-widest text-sm mb-2 mt-8">已完成</h4>
-                  <ul className="space-y-2 opacity-60">
-                    <li className="text-sm text-stone-500 italic p-3">目前沒有已完成的任務</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuestModal isOpen={isQuestModalOpen} onClose={() => setIsQuestModalOpen(false)} quests={quests} />
 
       {/* Profile Modal Overlay */}
-      {isProfileModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-md rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <h2 className="text-lg font-bold flex items-center"><User className="w-5 h-5 mr-2 text-indigo-400" /> 個人資訊</h2>
-              <button 
-                className="text-stone-400 hover:text-white transition"
-                onClick={() => setIsProfileModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-              <div>
-                <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wider">姓名</label>
-                <input 
-                  type="text" 
-                  value={profile.name}
-                  onChange={(e) => setProfile({...profile, name: e.target.value})}
-                  placeholder="未知"
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wider">職業</label>
-                <input 
-                  type="text" 
-                  value={profile.job}
-                  onChange={(e) => setProfile({...profile, job: e.target.value})}
-                  placeholder="例如：異鄉人、劍士、魔法師"
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wider">外貌</label>
-                <textarea 
-                  value={profile.appearance}
-                  onChange={(e) => setProfile({...profile, appearance: e.target.value})}
-                  placeholder="例如：性別、年齡、穿著。"
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wider">個性</label>
-                <textarea 
-                  value={profile.personality}
-                  onChange={(e) => setProfile({...profile, personality: e.target.value})}
-                  placeholder="例如：務實、謹慎、對陌生人抱有戒心。"
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1 uppercase tracking-wider">其他</label>
-                <textarea 
-                  value={profile.other}
-                  onChange={(e) => setProfile({...profile, other: e.target.value})}
-                  placeholder="例如：喜惡、習慣。"
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-white/5 bg-stone-900/50 flex justify-end">
-              <button 
-                className="bg-indigo-600/80 hover:bg-indigo-500/80 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl flex items-center transition text-sm shadow-[0_0_15px_rgba(79,70,229,0.3)]"
-                onClick={() => setIsProfileModalOpen(false)}
-              >
-                <Save className="w-4 h-4 mr-2" /> 儲存設定
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        profile={profile}
+        setProfile={setProfile}
+      />
 
       {/* Diary Modal Overlay */}
-      {isDiaryModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-2xl rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative h-[80vh]">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <div className="flex items-center">
-                <h2 className="text-lg font-bold flex items-center"><Book className="w-5 h-5 mr-2 text-amber-400" /> 日記與記憶</h2>
-                <span className="ml-4 text-xs text-stone-400">勾選的項目將會被 AI 讀取並帶入遊戲記憶中</span>
-              </div>
-              <button 
-                className="text-stone-400 hover:text-white transition"
-                onClick={() => setIsDiaryModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-4 border-b border-white/5 bg-stone-900/30 flex gap-2">
-              <button
-                onClick={handleAddDiary}
-                className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl bg-stone-800/40 hover:bg-stone-700/50 border border-white/10 hover:border-white/20 transition"
-              >
-                <span className="text-lg">📝</span>
-                <span className="text-[10px] text-stone-400">新增日記</span>
-              </button>
-
-              <button
-                onClick={handleGenerateDiary}
-                disabled={isDiaryGenerating}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border transition ${isDiaryGenerating ? 'opacity-50 cursor-not-allowed bg-stone-800/40 border-white/10' : 'bg-purple-900/20 hover:bg-purple-900/40 border-purple-500/30 hover:border-purple-400/50'}`}
-              >
-                <span className={`text-lg ${isDiaryGenerating ? 'animate-spin' : ''}`}>{isDiaryGenerating ? '⏳' : '🔮'}</span>
-                <span className="text-[10px] text-purple-300">水晶球日記</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  if (isDiaryMergeMode) {
-                    setIsDiaryMergeMode(false);
-                    setDiaryMergeSelection([]);
-                  } else {
-                    setIsDiaryMergeMode(true);
-                  }
-                }}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border transition ${isDiaryMergeMode ? 'bg-amber-900/40 border-amber-500/50' : 'bg-stone-800/40 hover:bg-amber-900/20 border-white/10 hover:border-amber-500/30'}`}
-              >
-                <span className="text-lg">💫</span>
-                <span className={`text-[10px] ${isDiaryMergeMode ? 'text-amber-300' : 'text-stone-400'}`}>融合日記</span>
-              </button>
-            </div>
-
-            {isDiaryMergeMode && (
-              <div className="px-4 pb-3 flex items-center justify-between bg-stone-900/30 border-b border-white/5">
-                <span className="text-xs text-stone-400">
-                  已選 {diaryMergeSelection.length} 條{diaryMergeSelection.length >= 2 ? '，可融合' : '，請選 2 條以上'}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setIsDiaryMergeMode(false); setDiaryMergeSelection([]); }}
-                    className="text-xs px-3 py-1.5 rounded-xl bg-stone-800/60 border border-white/10 text-stone-300 hover:bg-stone-700/60 transition"
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleMergeDiary}
-                    disabled={diaryMergeSelection.length < 2}
-                    className={`text-xs px-3 py-1.5 rounded-xl transition ${diaryMergeSelection.length >= 2 ? 'bg-amber-600/80 hover:bg-amber-500/80 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)]' : 'bg-stone-800/40 text-stone-600 cursor-not-allowed border border-white/5'}`}
-                  >
-                    💫 確認融合
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {diaryEntries.map(entry => {
-                const isMergedEntry = entry.source === 'merged' && entry.mergedFrom?.length > 0;
-                const isExpanded = expandedMergedIds.includes(entry.id);
-                const sourceDiaries = isMergedEntry
-                  ? diaryEntries.filter(e => entry.mergedFrom.includes(e.id))
-                  : [];
-
-                return (
-                <React.Fragment key={entry.id}>
-                <div className={`bg-stone-900/50 backdrop-blur-sm border rounded-2xl p-3 flex gap-3 transition-colors ${
-                  entry.isMerged ? 'opacity-40 border-white/5' :
-                  entry.source === 'merged' ? 'border-amber-500/30' :
-                  entry.isActive ? 'border-amber-500/50' : 'border-white/5'
-                }`}>
-                  <div className="flex flex-col gap-2 flex-shrink-0">
-                    <button 
-                      onClick={() => handleToggleDiary(entry.id)}
-                      className={`${entry.isActive ? 'text-amber-400' : 'text-stone-500 hover:text-stone-400'}`}
-                      title={entry.isActive ? "AI 將會讀取此記憶" : "AI 不會讀取此記憶"}
-                    >
-                      {entry.isActive ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                    </button>
-                    {isDiaryMergeMode && !entry.isMerged && (
-                      <button
-                        onClick={() => setDiaryMergeSelection(prev =>
-                          prev.includes(entry.id)
-                            ? prev.filter(id => id !== entry.id)
-                            : [...prev, entry.id]
-                        )}
-                        className={`${diaryMergeSelection.includes(entry.id) ? 'text-amber-400' : 'text-stone-600 hover:text-stone-400'}`}
-                        title="選取以融合"
-                      >
-                        {diaryMergeSelection.includes(entry.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col">
-                    {editingDiaryId === entry.id ? (
-                      <div className="flex flex-col gap-2">
-                        <textarea 
-                          value={entry.text}
-                          onChange={(e) => handleDiaryChange(entry.id, e.target.value)}
-                          onInput={(e) => {
-                            e.currentTarget.style.height = 'auto';
-                            e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
-                          }}
-                          placeholder="寫下你想讓 AI 記住的事件或設定..."
-                          className={`w-full bg-stone-900/50 backdrop-blur-sm resize-none outline-none text-sm min-h-[60px] p-3 rounded-xl border border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] transition ${entry.isActive ? 'text-stone-200' : 'text-stone-500'}`}
-                          autoFocus
-                          onFocus={(e) => {
-                            e.currentTarget.style.height = 'auto';
-                            e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
-                          }}
-                        />
-
-                        <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5">
-                          <div className="text-[10px] text-stone-400 mb-2 uppercase tracking-wider">
-                            觸發關鍵字 <span className="text-stone-600 normal-case">（空白 = 勾選後永遠注入）</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {(entry.keywords || []).map((kw: string) => (
-                              <span key={kw} className="flex items-center gap-1 bg-indigo-900/50 border border-indigo-500/40 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
-                                {kw}
-                                <button
-                                  onClick={() => handleDiaryKeywordRemove(entry.id, kw)}
-                                  className="text-indigo-400 hover:text-rose-400 transition leading-none"
-                                >×</button>
-                              </span>
-                            ))}
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="輸入關鍵字後按 Enter..."
-                            className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleDiaryKeywordAdd(entry.id, e.currentTarget.value);
-                                e.currentTarget.value = '';
-                              }
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex justify-end">
-                          <button 
-                            onClick={() => {
-                              setEditingDiaryId(null);
-                              showToast('已儲存日記');
-                            }}
-                            className="text-xs bg-indigo-600/80 hover:bg-indigo-500/80 backdrop-blur-sm text-white px-4 py-1.5 rounded-xl transition shadow-[0_0_10px_rgba(79,70,229,0.2)]"
-                          >
-                            確認
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        onDoubleClick={() => setEditingDiaryId(entry.id)}
-                        className={`w-full text-sm min-h-[60px] whitespace-pre-wrap cursor-text p-3 rounded-xl border border-transparent hover:border-white/5 transition ${entry.isActive ? 'text-stone-200' : 'text-stone-500'}`}
-                        title="雙擊以編輯"
-                      >
-                        {entry.text || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
-                        {(entry.keywords || []).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {(entry.keywords || []).map((kw: string) => (
-                              <span key={kw} className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
-                                scanKeywords([kw])
-                                  ? 'bg-indigo-900/60 border-indigo-500/50 text-indigo-300'
-                                  : 'bg-stone-800/60 border-stone-600/40 text-stone-500'
-                              }`}>
-                                {kw}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col gap-1 flex-shrink-0">
-                    {entry.isMerged && (
-                      <span className="text-[9px] text-stone-500 px-1">已融合</span>
-                    )}
-                    {isMergedEntry && (
-                      <button
-                        onClick={() => setExpandedMergedIds(prev =>
-                          prev.includes(entry.id)
-                            ? prev.filter(id => id !== entry.id)
-                            : [...prev, entry.id]
-                        )}
-                        className="text-amber-400 hover:text-amber-300 transition"
-                        title={isExpanded ? "收合來源" : "展開來源"}
-                      >
-                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => handleDeleteDiary(entry.id)}
-                      className="text-stone-500 hover:text-rose-400 transition"
-                      title="刪除"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {isMergedEntry && isExpanded && sourceDiaries.map(src => (
-                  <div key={src.id} className="ml-8 bg-stone-900/30 border border-white/5 rounded-xl p-3 text-xs text-stone-500 whitespace-pre-wrap">
-                    {src.text || <span className="italic">（空白）</span>}
-                  </div>
-                ))}
-                </React.Fragment>
-                );
-              })}
-              
-              {diaryEntries.length === 0 && (
-                <div className="text-center text-stone-500 py-10">
-                  目前沒有任何日記。點擊上方按鈕新增。
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <DiaryModal
+        isOpen={isDiaryModalOpen}
+        onClose={() => setIsDiaryModalOpen(false)}
+        diaryEntries={diaryEntries}
+        onAddDiary={handleAddDiary}
+        onGenerateDiary={handleGenerateDiary}
+        onMergeDiary={handleMergeDiary}
+        onToggleDiary={handleToggleDiary}
+        onDiaryChange={handleDiaryChange}
+        onDiaryKeywordAdd={handleDiaryKeywordAdd}
+        onDiaryKeywordRemove={handleDiaryKeywordRemove}
+        onDeleteDiary={handleDeleteDiary}
+        scanKeywords={scanKeywords}
+      />
 
       {/* Lorebook Modal Overlay */}
-      {isLorebookModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-3xl rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative h-[85vh]">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <div className="flex items-center">
-                <h2 className="text-lg font-bold flex items-center"><BookOpen className="w-5 h-5 mr-2 text-indigo-400" /> 世界觀與設定集</h2>
-                <span className="ml-4 text-xs text-stone-400">勾選的項目將會被 AI 讀取並作為背景知識</span>
-              </div>
-              <button 
-                className="text-stone-400 hover:text-white transition"
-                onClick={() => setIsLorebookModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-4 border-b border-white/5 bg-stone-900/30 flex gap-3 items-center">
-              <button 
-                onClick={handleAddLorebook}
-                className="bg-stone-800/40 backdrop-blur-sm hover:bg-stone-700/50 border border-white/10 hover:border-white/20 text-stone-200 px-4 py-2 rounded-xl flex items-center transition"
-              >
-                <Plus className="w-4 h-4 mr-2" /> 新增設定
-              </button>
-              
-              <div className="flex-1 max-w-xs relative ml-4">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-stone-500" />
-                <input
-                  type="text"
-                  placeholder="搜尋設定..."
-                  value={lorebookSearch}
-                  onChange={(e) => setLorebookSearch(e.target.value)}
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
-                />
-              </div>
-
-              <div className="flex bg-stone-900/50 border border-white/10 rounded-xl overflow-hidden ml-auto">
-                {['地點', 'NPC', '怪物', '物品', '歷史', '其他'].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setLorebookFilter(cat)}
-                    className={`px-4 py-2 text-xs font-medium transition ${lorebookFilter === cat ? 'bg-indigo-600/80 text-white' : 'text-stone-400 hover:bg-stone-800/50 hover:text-stone-200'}`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {lorebookEntries
-                .filter(entry => entry.category === lorebookFilter)
-                .filter(entry => {
-                  if (!lorebookSearch.trim()) return true;
-                  const searchLower = lorebookSearch.toLowerCase();
-                  return (
-                    (entry.title && entry.title.toLowerCase().includes(searchLower)) ||
-                    (entry.content && entry.content.toLowerCase().includes(searchLower)) ||
-                    (entry.job && entry.job.toLowerCase().includes(searchLower)) ||
-                    (entry.appearance && entry.appearance.toLowerCase().includes(searchLower)) ||
-                    (entry.personality && entry.personality.toLowerCase().includes(searchLower)) ||
-                    (entry.other && entry.other.toLowerCase().includes(searchLower))
-                  );
-                })
-                .map(entry => (
-                <div key={entry.id} className={`bg-stone-900/50 backdrop-blur-sm border ${entry.isActive ? 'border-indigo-500/50' : 'border-white/5'} rounded-2xl p-4 flex gap-3 transition-colors`}>
-                  <button 
-                    onClick={() => handleToggleLorebook(entry.id)}
-                    className={`mt-1 flex-shrink-0 ${entry.isActive ? 'text-indigo-400' : 'text-stone-500 hover:text-stone-400'}`}
-                    title={entry.isActive ? "AI 將會讀取此設定" : "AI 不會讀取此設定"}
-                  >
-                    {entry.isActive ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                  </button>
-                  
-                  <div className="flex-1 flex flex-col">
-                    {editingLorebookId === entry.id ? (
-                      <div className="flex flex-col space-y-3">
-                        <div className="flex gap-3">
-                          <input 
-                            type="text"
-                            value={entry.title}
-                            onChange={(e) => handleLorebookChange(entry.id, 'title', e.target.value)}
-                            className="flex-1 bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-2.5 text-sm text-stone-100 font-bold focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
-                            placeholder="設定標題..."
-                          />
-                          <select
-                            value={entry.category}
-                            onChange={(e) => handleLorebookChange(entry.id, 'category', e.target.value)}
-                            className="bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-2.5 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition w-32"
-                          >
-                            <option value="地點">地點</option>
-                            <option value="NPC">NPC</option>
-                            <option value="怪物">怪物</option>
-                            <option value="物品">物品</option>
-                            <option value="歷史">歷史</option>
-                            <option value="其他">其他</option>
-                          </select>
-                        </div>
-                        {entry.category === 'NPC' ? (
-                          <div className="flex flex-col space-y-2 mt-2">
-                            <input
-                              type="text"
-                              value={entry.job || ''}
-                              onChange={(e) => handleLorebookChange(entry.id, 'job', e.target.value)}
-                              className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition"
-                              placeholder="職業..."
-                            />
-                            <textarea
-                              value={entry.appearance || ''}
-                              onChange={(e) => handleLorebookChange(entry.id, 'appearance', e.target.value)}
-                              className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                              placeholder="外貌描述..."
-                            />
-                            <textarea
-                              value={entry.personality || ''}
-                              onChange={(e) => handleLorebookChange(entry.id, 'personality', e.target.value)}
-                              className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                              placeholder="個性描述..."
-                            />
-                            <textarea
-                              value={entry.other || ''}
-                              onChange={(e) => handleLorebookChange(entry.id, 'other', e.target.value)}
-                              className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none h-20"
-                              placeholder="其他..."
-                            />
-                          </div>
-                        ) : (
-                          <textarea 
-                            value={entry.content}
-                            onChange={(e) => handleLorebookChange(entry.id, 'content', e.target.value)}
-                            className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-indigo-500/50 focus:shadow-[0_0_15px_rgba(99,102,241,0.2)] outline-none transition resize-none min-h-[100px]"
-                            placeholder="寫下詳細設定內容..."
-                            autoFocus
-                            onFocus={(e) => {
-                              e.currentTarget.style.height = 'auto';
-                              e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px';
-                            }}
-                          />
-                        )}
-                        {/* ── 觸發關鍵字區塊 ── */}
-                        <div className="bg-stone-900/60 rounded-xl p-3 border border-white/5 space-y-3">
-                          
-                          <div>
-                            <div className="text-[10px] text-stone-400 mb-1.5 uppercase tracking-wider">
-                              主關鍵字 <span className="text-stone-600 normal-case">（OR，任一命中即觸發；空白 = 依地點/NPC規則）</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5 mb-1.5">
-                              {(entry.keywords || []).map((kw: string) => (
-                                <span key={kw} className="flex items-center gap-1 bg-indigo-900/50 border border-indigo-500/40 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
-                                  {kw}
-                                  <button onClick={() => handleLorebookKeywordRemove(entry.id, 'keywords', kw)} className="text-indigo-400 hover:text-rose-400 transition leading-none">×</button>
-                                </span>
-                              ))}
-                            </div>
-                            <input type="text" placeholder="輸入後按 Enter..."
-                              className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition"
-                              onKeyDown={(e) => { if (e.key === 'Enter') { handleLorebookKeywordAdd(entry.id, 'keywords', e.currentTarget.value); e.currentTarget.value = ''; }}} />
-                          </div>
-
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <button
-                                onClick={() => setLorebookEntries(prev => prev.map(e => e.id === entry.id ? { ...e, selective: !e.selective } : e))}
-                                className={`text-[10px] px-2 py-0.5 rounded-full border transition ${entry.selective ? 'bg-amber-900/50 border-amber-500/50 text-amber-300' : 'bg-stone-800/50 border-stone-600/40 text-stone-500'}`}
-                              >
-                                AND 邏輯 {entry.selective ? '開' : '關'}
-                              </button>
-                              <span className="text-[10px] text-stone-600">開啟時，主關鍵字 AND 次要關鍵字都要命中</span>
-                            </div>
-                            {entry.selective && (
-                              <>
-                                <div className="flex flex-wrap gap-1.5 mb-1.5">
-                                  {(entry.secondaryKeys || []).map((kw: string) => (
-                                    <span key={kw} className="flex items-center gap-1 bg-amber-900/50 border border-amber-500/40 text-amber-300 text-xs px-2 py-0.5 rounded-full">
-                                      {kw}
-                                      <button onClick={() => handleLorebookKeywordRemove(entry.id, 'secondaryKeys', kw)} className="text-amber-400 hover:text-rose-400 transition leading-none">×</button>
-                                    </span>
-                                  ))}
-                                </div>
-                                <input type="text" placeholder="次要關鍵字，輸入後按 Enter..."
-                                  className="w-full bg-stone-800/50 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-stone-200 outline-none focus:border-amber-500/50 transition"
-                                  onKeyDown={(e) => { if (e.key === 'Enter') { handleLorebookKeywordAdd(entry.id, 'secondaryKeys', e.currentTarget.value); e.currentTarget.value = ''; }}} />
-                              </>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-stone-400 uppercase tracking-wider whitespace-nowrap">注入順序</span>
-                            <input
-                              type="number" min={0} max={999}
-                              value={entry.insertionOrder ?? 100}
-                              onChange={(e) => setLorebookEntries(prev => prev.map(en => en.id === entry.id ? { ...en, insertionOrder: parseInt(e.target.value) || 0 } : en))}
-                              className="w-20 bg-stone-800/50 border border-white/10 rounded-lg px-2 py-1 text-xs text-stone-200 outline-none focus:border-indigo-500/50 transition text-center"
-                            />
-                            <span className="text-[10px] text-stone-600">數字越小越先注入（0–999）</span>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end mt-2">
-                          <button 
-                            onClick={() => {
-                              setEditingLorebookId(null);
-                              showToast('已儲存設定');
-                            }}
-                            className="text-xs bg-indigo-600/80 hover:bg-indigo-500/80 backdrop-blur-sm text-white px-4 py-1.5 rounded-xl transition shadow-[0_0_10px_rgba(79,70,229,0.2)]"
-                          >
-                            確認
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div 
-                        onDoubleClick={() => setEditingLorebookId(entry.id)}
-                        className="cursor-pointer group"
-                        title="雙擊以編輯"
-                      >
-                        <div className="flex items-center mb-1">
-                          <span className={`text-xs px-2 py-0.5 rounded-md mr-2 ${
-                            entry.category === '地點' ? 'bg-emerald-900/40 text-emerald-400' :
-                            entry.category === 'NPC' ? 'bg-amber-900/40 text-amber-400' :
-                            entry.category === '怪物' ? 'bg-rose-900/40 text-rose-400' :
-                            entry.category === '物品' ? 'bg-blue-900/40 text-blue-400' :
-                            entry.category === '歷史' ? 'bg-purple-900/40 text-purple-400' :
-                            'bg-stone-800 text-stone-300'
-                          }`}>
-                            {entry.category}
-                          </span>
-                          <h3 className={`font-bold ${!entry.isActive ? 'text-stone-500' : 'text-stone-200'}`}>{entry.title || '未命名設定'}</h3>
-                        </div>
-                        {entry.category === 'NPC' ? (
-                          <div className={`text-sm leading-relaxed whitespace-pre-wrap p-2 rounded group-hover:bg-white/5 transition space-y-1 ${!entry.isActive ? 'text-stone-500' : 'text-stone-300'}`}>
-                            {entry.job && <div><span className="font-medium text-stone-400">職業：</span>{entry.job}</div>}
-                            {entry.appearance && <div><span className="font-medium text-stone-400">外貌：</span>{entry.appearance}</div>}
-                            {entry.personality && <div><span className="font-medium text-stone-400">個性：</span>{entry.personality}</div>}
-                            {entry.other && <div><span className="font-medium text-stone-400">其他：</span>{entry.other}</div>}
-                            {!entry.job && !entry.appearance && !entry.personality && !entry.other && <span className="text-stone-600 italic">雙擊以新增內容...</span>}
-                          </div>
-                        ) : (
-                          <div className={`text-sm leading-relaxed whitespace-pre-wrap p-2 rounded group-hover:bg-white/5 transition ${!entry.isActive ? 'text-stone-500' : 'text-stone-300'}`}>
-                            {entry.content || <span className="text-stone-600 italic">雙擊以新增內容...</span>}
-                          </div>
-                        )}
-                        {((entry.keywords || []).length > 0 || (entry.secondaryKeys || []).length > 0) && (
-                          <div className="flex flex-wrap gap-1 mt-1.5 px-2">
-                            {(entry.keywords || []).map((kw: string) => (
-                              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-900/40 border border-indigo-500/30 text-indigo-400">{kw}</span>
-                            ))}
-                            {entry.selective && (entry.secondaryKeys || []).map((kw: string) => (
-                              <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-900/40 border border-amber-500/30 text-amber-400">+{kw}</span>
-                            ))}
-                            {entry.insertionOrder !== undefined && entry.insertionOrder !== 100 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-800 border border-stone-600/40 text-stone-500">#{entry.insertionOrder}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleDeleteLorebook(entry.id)}
-                    className="flex-shrink-0 text-stone-500 hover:text-rose-400 transition self-start mt-1"
-                    title="刪除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              
-              {lorebookEntries.filter(entry => entry.category === lorebookFilter).length === 0 ? (
-                <div className="text-center text-stone-500 py-10">
-                  目前沒有任何{lorebookFilter}設定。點擊上方按鈕新增。
-                </div>
-              ) : lorebookEntries
-                .filter(entry => entry.category === lorebookFilter)
-                .filter(entry => {
-                  if (!lorebookSearch.trim()) return true;
-                  const searchLower = lorebookSearch.toLowerCase();
-                  return (
-                    (entry.title && entry.title.toLowerCase().includes(searchLower)) ||
-                    (entry.content && entry.content.toLowerCase().includes(searchLower)) ||
-                    (entry.job && entry.job.toLowerCase().includes(searchLower)) ||
-                    (entry.appearance && entry.appearance.toLowerCase().includes(searchLower)) ||
-                    (entry.personality && entry.personality.toLowerCase().includes(searchLower)) ||
-                    (entry.other && entry.other.toLowerCase().includes(searchLower))
-                  );
-                }).length === 0 && (
-                <div className="text-center text-stone-500 py-10">
-                  找不到符合「{lorebookSearch}」的設定。
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <LorebookModal
+        isOpen={isLorebookModalOpen}
+        onClose={() => setIsLorebookModalOpen(false)}
+        lorebookEntries={lorebookEntries}
+        onAddLorebook={handleAddLorebook}
+        onUpdateLorebook={handleUpdateLorebook}
+        onDeleteLorebook={handleDeleteLorebook}
+        onLorebookKeywordAdd={handleLorebookKeywordAdd}
+        onLorebookKeywordRemove={handleLorebookKeywordRemove}
+        showToast={showToast}
+      />
 
       {/* NPC Modal Overlay */}
-      {selectedNpc && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-md rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <h2 className="text-lg font-bold flex items-center"><Users className="w-5 h-5 mr-2 text-emerald-400" /> 人物 資訊</h2>
-              <div className="flex items-center space-x-3">
-                <button 
-                  className="transition text-stone-500 hover:text-indigo-400"
-                  onClick={() => handleRecordNpc(selectedNpc)}
-                  title="記下此人 (加入設定集)"
-                >
-                  <BookPlus className="w-5 h-5" />
-                </button>
-                <button 
-                  className={`transition ${selectedNpc.isPinned ? 'text-amber-400 hover:text-amber-300' : 'text-stone-500 hover:text-stone-300'}`}
-                  onClick={() => handleTogglePinNpc(selectedNpc.id)}
-                  title={selectedNpc.isPinned ? "取消釘選" : "釘選至個人資訊"}
-                >
-                  <Pin className={`w-5 h-5 ${selectedNpc.isPinned ? 'fill-current' : ''}`} />
-                </button>
-                <button 
-                  className="text-stone-400 hover:text-white transition"
-                  onClick={() => setSelectedNpc(null)}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-              <div className="flex justify-between items-start border-b border-stone-700 pb-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-stone-100">{selectedNpc.name}</h3>
-                  <p className="text-stone-400 text-sm mt-1">{selectedNpc.job}</p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-xs text-stone-500 uppercase tracking-wider mb-1">好感度</span>
-                  <div className={`flex items-center font-bold text-lg ${selectedNpc.affection >= 80 ? 'text-emerald-400' : selectedNpc.affection >= 50 ? 'text-stone-400' : 'text-rose-400'}`}>
-                    <Heart className="w-4 h-4 mr-1.5 fill-current" /> {selectedNpc.affection}
-                  </div>
-                  <span className="text-xs text-stone-500 mt-1">({selectedNpc.affectionLabel})</span>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center"><User className="w-3.5 h-3.5 mr-1.5" /> 外貌特徵</h4>
-                <p className="text-sm text-stone-300 leading-relaxed bg-stone-900/40 backdrop-blur-sm p-4 rounded-2xl border border-white/5 shadow-inner break-words whitespace-pre-wrap">
-                  {selectedNpc.appearance}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center"><Book className="w-3.5 h-3.5 mr-1.5" /> 個性描述</h4>
-                <p className="text-sm text-stone-300 leading-relaxed bg-stone-900/40 backdrop-blur-sm p-4 rounded-2xl border border-white/5 shadow-inner break-words whitespace-pre-wrap">
-                  {selectedNpc.personality}
-                </p>
-              </div>
-
-              {selectedNpc.other && (
-                <div>
-                  <h4 className="text-xs text-stone-400 mb-2 uppercase tracking-wider flex items-center"><Book className="w-3.5 h-3.5 mr-1.5" /> 其他備註</h4>
-                  <p className="text-sm text-stone-300 leading-relaxed bg-stone-900/40 backdrop-blur-sm p-4 rounded-2xl border border-white/5 shadow-inner break-words whitespace-pre-wrap">
-                    {selectedNpc.other}
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-6 border-t border-white/5 pt-6">
-                {selectedNpc.affection > 60 ? (
-                  <div>
-                    <h4 className="text-xs text-amber-400 mb-3 uppercase tracking-wider flex items-center">
-                      <Book className="w-3.5 h-3.5 mr-1.5" /> 專屬記憶庫 (好感度 &gt; 60 解鎖)
-                    </h4>
-                    <div className="space-y-2 mb-3">
-                      {selectedNpc.memories && selectedNpc.memories.length > 0 ? (
-                        selectedNpc.memories.map((mem: string, idx: number) => (
-                          <div key={idx} className="bg-stone-900/60 backdrop-blur-sm p-3 rounded-xl border border-white/5 text-sm text-stone-300 flex justify-between items-start group shadow-sm">
-                            <span className="flex-1 pr-2 whitespace-pre-wrap break-words min-w-0">{mem}</span>
-                            <button 
-                              onClick={() => handleRemoveNpcMemory(selectedNpc.id, idx)} 
-                              className="text-stone-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition flex-shrink-0 mt-0.5"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-xs text-stone-500 italic bg-stone-900/30 backdrop-blur-sm p-4 rounded-xl border border-white/10 border-dashed text-center">
-                          目前還沒有特別的回憶...
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex space-x-2">
-                      <textarea 
-                        id="new-npc-memory"
-                        placeholder="新增與他的回憶... (Shift+Enter 換行)" 
-                        className="flex-1 bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2 text-sm text-stone-200 focus:border-amber-500/50 focus:shadow-[0_0_15px_rgba(245,158,11,0.2)] outline-none transition resize-none"
-                        rows={2}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleAddNpcMemory(selectedNpc.id, e.currentTarget.value);
-                            e.currentTarget.value = '';
-                          }
-                        }}
-                      />
-                      <button 
-                        onClick={() => {
-                          const input = document.getElementById('new-npc-memory') as HTMLTextAreaElement;
-                          if (input && input.value) {
-                            handleAddNpcMemory(selectedNpc.id, input.value);
-                            input.value = '';
-                          }
-                        }}
-                        className="bg-stone-800/60 hover:bg-stone-700/60 backdrop-blur-sm border border-white/10 px-4 rounded-xl text-sm transition text-stone-200 flex items-center justify-center"
-                      >
-                        新增
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-stone-900/40 backdrop-blur-sm border border-white/5 p-6 rounded-2xl text-center flex flex-col items-center justify-center shadow-inner">
-                    <Lock className="w-5 h-5 text-stone-600 mb-2" />
-                    <p className="text-xs text-stone-500">好感度不足，無法開啟專屬記憶庫 (需 &gt; 60)</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <NpcModal
+        selectedNpc={selectedNpc}
+        onClose={() => setSelectedNpc(null)}
+        onRecordNpc={handleRecordNpc}
+        onTogglePinNpc={handleTogglePinNpc}
+        onAddNpcMemory={handleAddNpcMemory}
+        onRemoveNpcMemory={handleRemoveNpcMemory}
+      />
 
       {/* System Prompt Modal Overlay */}
-      {isSystemPromptModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-2xl rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative h-[80vh]">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <div className="flex items-center">
-                <h2 className="text-lg font-bold flex items-center"><Brain className="w-5 h-5 mr-2 text-fuchsia-400" /> 系統底層邏輯</h2>
-                <span className="ml-4 text-xs text-stone-400">定義 AI 的扮演規則、世界觀與文筆風格</span>
-              </div>
-              <button 
-                className="text-stone-400 hover:text-white transition"
-                onClick={() => setIsSystemPromptModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-stone-300 flex items-center">
-                  <Globe className="w-4 h-4 mr-2 text-blue-400" /> 世界觀前提 (World Premise)
-                </label>
-                <p className="text-xs text-stone-500 mb-2">定義這個世界的基本法則、時代背景與核心衝突。</p>
-                <textarea 
-                  value={systemPrompt.worldPremise}
-                  onChange={(e) => setSystemPrompt({...systemPrompt, worldPremise: e.target.value})}
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-fuchsia-500/50 focus:shadow-[0_0_15px_rgba(217,70,239,0.2)] outline-none transition resize-none min-h-[100px]"
-                  placeholder="例如：這是一個賽博龐克世界，企業控制了一切..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-stone-300 flex items-center">
-                  <Shield className="w-4 h-4 mr-2 text-rose-400" /> 扮演規則 (Roleplay Rules)
-                </label>
-                <p className="text-xs text-stone-500 mb-2">限制 AI 的行為，例如不能代替玩家說話、必須根據屬性判定結果等。</p>
-                <textarea 
-                  value={systemPrompt.roleplayRules}
-                  onChange={(e) => setSystemPrompt({...systemPrompt, roleplayRules: e.target.value})}
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-fuchsia-500/50 focus:shadow-[0_0_15px_rgba(217,70,239,0.2)] outline-none transition resize-none min-h-[100px]"
-                  placeholder="例如：你是一個無情的地下城主，絕對不要給玩家放水..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-stone-300 flex items-center">
-                  <Sparkles className="w-4 h-4 mr-2 text-amber-400" /> 文筆風格 (Writing Style)
-                </label>
-                <p className="text-xs text-stone-500 mb-2">指定 AI 回覆的語氣、字數限制與描寫重點。</p>
-                <textarea 
-                  value={systemPrompt.writingStyle}
-                  onChange={(e) => setSystemPrompt({...systemPrompt, writingStyle: e.target.value})}
-                  className="w-full bg-stone-900/50 backdrop-blur-sm border border-white/10 rounded-xl p-3 text-sm text-stone-100 focus:border-fuchsia-500/50 focus:shadow-[0_0_15px_rgba(217,70,239,0.2)] outline-none transition resize-none min-h-[100px]"
-                  placeholder="例如：請使用充滿感官細節的文學筆觸，每次回覆不超過 150 字..."
-                />
-              </div>
-            </div>
-            
-            <div className="p-4 border-t border-white/5 bg-stone-900/50 flex justify-end">
-              <button 
-                onClick={() => {
-                  setIsSystemPromptModalOpen(false);
-                  showToast('已儲存系統底層邏輯');
-                }}
-                className="bg-fuchsia-600/80 hover:bg-fuchsia-500/80 backdrop-blur-sm text-white px-6 py-2 rounded-xl transition shadow-[0_0_15px_rgba(217,70,239,0.2)]"
-              >
-                完成
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SystemPromptModal
+        isOpen={isSystemPromptModalOpen}
+        onClose={() => setIsSystemPromptModalOpen(false)}
+        systemPrompt={systemPrompt}
+        setSystemPrompt={setSystemPrompt}
+        showToast={showToast}
+      />
 
       {/* Settings Modal Overlay */}
-      {isSettingsModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-stone-900/70 backdrop-blur-xl w-full max-w-sm rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 relative">
-            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-              <h2 className="text-lg font-bold flex items-center"><Settings className="w-5 h-5 mr-2 text-stone-400" /> 系統設定</h2>
-              <button 
-                className="text-stone-400 hover:text-white transition"
-                onClick={() => setIsSettingsModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-
-              {/* API Key 輸入 */}
-              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-2">
-                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center gap-2">
-                  <span>🔑</span> Gemini API Key
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={geminiApiKey}
-                    onChange={(e) => {
-                      setGeminiApiKey(e.target.value);
-                      localStorage.setItem('gemini_api_key', e.target.value);
-                    }}
-                    placeholder="貼上你的 API Key..."
-                    className="w-full bg-stone-900/60 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-stone-200 outline-none focus:border-indigo-500/50 transition pr-16"
-                  />
-                  {geminiApiKey && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-400">
-                      ✓ 已設定
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-stone-600 leading-relaxed">
-                  儲存在本機瀏覽器，不會上傳。取得方式：<br/>
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline transition">aistudio.google.com</a>
-                </p>
-              </div>
-
-              {/* Token 上限設定 */}
-              <div className="bg-stone-800/40 border border-white/5 rounded-2xl p-4 space-y-3">
-                <label className="text-xs text-stone-400 uppercase tracking-wider flex items-center gap-2">
-                  Token 上限
-                </label>
-                <div className="flex gap-2">
-                  {TOKEN_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        setMaxTokens(opt.value);
-                        localStorage.setItem('gemini_max_tokens', String(opt.value));
-                      }}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition ${
-                        maxTokens === opt.value
-                          ? 'bg-indigo-600/80 border-indigo-500 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)]'
-                          : 'bg-stone-900/50 border-white/10 text-stone-400 hover:border-indigo-500/40 hover:text-stone-200'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-stone-600 leading-relaxed">
-                  較高的上限允許 AI 產生更長的回應，但會消耗更多 API 額度。
-                </p>
-              </div>
-
-              <div className="border-t border-white/5 pt-2" />
-
-              <button 
-                onClick={handleExportSave}
-                className="w-full bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 text-stone-200 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
-              >
-                <span className="flex items-center"><Download className="w-4 h-4 mr-3 text-indigo-400" /> 匯出存檔</span>
-                <span className="text-xs text-stone-400">下載 JSON 檔</span>
-              </button>
-              
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 text-stone-200 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
-              >
-                <span className="flex items-center"><Upload className="w-4 h-4 mr-3 text-emerald-400" /> 匯入存檔</span>
-                <span className="text-xs text-stone-400">讀取 JSON 檔</span>
-              </button>
-              <input 
-                type="file" 
-                accept=".json" 
-                className="hidden" 
-                ref={fileInputRef}
-                onChange={handleImportSave}
-              />
-
-              <div className="pt-4 border-t border-white/5 mt-4">
-                <button 
-                  onClick={handleResetGame}
-                  className="w-full bg-rose-900/20 backdrop-blur-sm hover:bg-rose-900/40 border border-rose-800/30 text-rose-300 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
-                >
-                  <span className="flex items-center"><RotateCcw className="w-4 h-4 mr-3" /> 重置遊戲</span>
-                  <span className="text-xs text-rose-400/70">清除所有進度</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        maxTokens={maxTokens}
+        setMaxTokens={setMaxTokens}
+        handleExportSave={handleExportSave}
+        handleImportSave={handleImportSave}
+        handleResetGame={handleResetGame}
+      />
 
       {/* Map Modal */}
-      <AnimatePresence>
-        {isMapOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-stone-900/80 backdrop-blur-xl w-full max-w-6xl rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden text-stone-200 border border-white/10 h-[85vh]"
-            >
-              <div className="p-4 border-b border-white/5 flex justify-between items-center bg-stone-900/50">
-                <h2 className="text-lg font-bold flex items-center"><MapIcon className="w-5 h-5 mr-2 text-indigo-400" /> 世界地圖與探索紀錄</h2>
-                <button 
-                  className="text-stone-400 hover:text-white transition"
-                  onClick={() => setIsMapOpen(false)}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                {/* Visual Map Area */}
-                <div className="flex-[2] border-b md:border-b-0 md:border-r border-stone-700 relative bg-stone-950 overflow-hidden group">
-                  <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#444 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-                  
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-[600px] h-[600px] border border-stone-800/50 rounded-full bg-stone-900/30">
-                      {worldMap.fixed.map(loc => {
-                        const left = `${((loc.x + 150) / 300) * 100}%`;
-                        const top = `${((-loc.y + 150) / 300) * 100}%`;
-                        
-                        return (
-                          <div 
-                            key={loc.id}
-                            className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group/pin cursor-pointer"
-                            style={{ left, top }}
-                            onClick={() => {
-                              if (!mapOrigin) setMapOrigin(loc.id);
-                              else if (!mapDestination && loc.id !== mapOrigin) setMapDestination(loc.id);
-                              else { setMapOrigin(loc.id); setMapDestination(null); }
-                            }}
-                          >
-                            <div className={`w-3 h-3 rounded-full border-2 ${mapOrigin === loc.id ? 'bg-emerald-400 border-emerald-200 shadow-[0_0_10px_rgba(52,211,153,0.8)]' : mapDestination === loc.id ? 'bg-indigo-400 border-indigo-200 shadow-[0_0_10px_rgba(129,140,248,0.8)]' : 'bg-stone-500 border-stone-300'} transition-all duration-300 group-hover/pin:scale-150`}></div>
-                            <span className={`mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-stone-900/80 backdrop-blur-sm border border-stone-700 whitespace-nowrap ${mapOrigin === loc.id ? 'text-emerald-400 border-emerald-500/50' : mapDestination === loc.id ? 'text-indigo-400 border-indigo-500/50' : 'text-stone-300'}`}>
-                              {loc.name}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  
-                  <div className="absolute bottom-4 left-4 bg-stone-900/80 backdrop-blur-md border border-white/10 p-3 rounded-2xl text-xs space-y-2 shadow-[0_0_20px_rgba(0,0,0,0.3)]">
-                    <div className="font-bold text-stone-300 mb-1">地圖圖例</div>
-                    <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-emerald-400 mr-2"></div> 起點</div>
-                    <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-indigo-400 mr-2"></div> 終點</div>
-                    <div className="flex items-center"><div className="w-2 h-2 rounded-full bg-stone-500 mr-2"></div> 未選擇</div>
-                    <div className="text-stone-500 mt-2 pt-2 border-t border-stone-700">點擊地標設定起終點</div>
-                  </div>
-                </div>
-
-                {/* Right Column: Lists & Calculator */}
-                <div className="flex-[1] flex flex-col bg-stone-900 overflow-hidden">
-                  
-                  <div className="p-4 border-b border-stone-700 bg-stone-800/50">
-                    <h3 className="text-sm font-bold text-stone-300 mb-3 flex items-center">
-                      <Navigation className="w-4 h-4 mr-2 text-indigo-400" /> 旅行時間計算
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between bg-stone-900/50 backdrop-blur-sm p-3 rounded-xl border border-white/5 shadow-inner">
-                        <span className="text-stone-500 text-xs">起點</span>
-                        <span className="font-bold text-emerald-400">{mapOrigin ? worldMap.fixed.find(l => l.id === mapOrigin)?.name : '請在地圖上點擊'}</span>
-                      </div>
-                      <div className="flex items-center justify-between bg-stone-900/50 backdrop-blur-sm p-3 rounded-xl border border-white/5 shadow-inner">
-                        <span className="text-stone-500 text-xs">終點</span>
-                        <span className="font-bold text-indigo-400">{mapDestination ? worldMap.fixed.find(l => l.id === mapDestination)?.name : '請在地圖上點擊'}</span>
-                      </div>
-                      
-                      {calculateTravelTime() && (
-                        <div className="mt-3 space-y-2 animate-in fade-in zoom-in duration-300">
-                          <div className="p-3 bg-indigo-900/20 backdrop-blur-sm border border-indigo-500/30 rounded-2xl flex flex-col items-center justify-center">
-                            <span className="text-xs text-indigo-300 mb-1">預估步行時間 (距離 {calculateTravelTime()?.distance})</span>
-                            <span className="text-lg font-bold text-indigo-100">{calculateTravelTime()?.walkTimeStr}</span>
-                          </div>
-                          <div className="p-3 bg-amber-900/20 backdrop-blur-sm border border-amber-500/30 rounded-2xl flex flex-col items-center justify-center">
-                            <span className="text-xs text-amber-300 mb-1">預估馬車時間 (3倍速)</span>
-                            <span className="text-lg font-bold text-amber-100">{calculateTravelTime()?.carriageTimeStr}</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {(mapOrigin || mapDestination) && (
-                        <button 
-                          onClick={() => { setMapOrigin(null); setMapDestination(null); }}
-                          className="w-full mt-2 py-2 text-xs bg-stone-800/60 backdrop-blur-sm border border-white/5 hover:bg-stone-700/60 rounded-xl transition text-stone-300 shadow-sm"
-                        >
-                          重置計算
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-bold text-stone-400 border-b border-stone-700 pb-2 flex items-center uppercase tracking-wider">
-                        <Globe className="w-3.5 h-3.5 mr-1.5" /> 已知世界地標
-                      </h3>
-                      <div className="space-y-2">
-                        {worldMap.fixed.map(loc => (
-                          <div 
-                            key={loc.id} 
-                            className={`bg-stone-800/40 backdrop-blur-sm border p-2.5 rounded-2xl transition cursor-pointer ${mapOrigin === loc.id ? 'border-emerald-500/50 bg-emerald-900/20' : mapDestination === loc.id ? 'border-indigo-500/50 bg-indigo-900/20' : 'border-white/5 hover:border-white/20'}`}
-                            onClick={() => {
-                              if (!mapOrigin) setMapOrigin(loc.id);
-                              else if (!mapDestination && loc.id !== mapOrigin) setMapDestination(loc.id);
-                              else { setMapOrigin(loc.id); setMapDestination(null); }
-                            }}
-                          >
-                            <div className="flex justify-between items-start mb-1">
-                              <span className={`font-bold text-sm ${mapOrigin === loc.id ? 'text-emerald-400' : mapDestination === loc.id ? 'text-indigo-400' : 'text-stone-300'}`}>
-                                {loc.name}
-                              </span>
-                              <span className="text-[9px] bg-stone-900/60 backdrop-blur-sm border border-white/5 px-1.5 py-0.5 rounded-md text-stone-400">{loc.x}, {loc.y}</span>
-                            </div>
-                            <p className="text-[11px] text-stone-500 leading-relaxed">{loc.desc}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <h3 className="text-xs font-bold text-stone-400 border-b border-stone-700 pb-2 flex items-center uppercase tracking-wider">
-                        <MapPin className="w-3.5 h-3.5 mr-1.5" /> 旅途發現 (動態)
-                      </h3>
-                      <div className="space-y-2">
-                        {worldMap.dynamic.map(loc => (
-                          <div key={loc.id} className="bg-stone-800/40 backdrop-blur-sm border border-white/5 p-2.5 rounded-2xl relative overflow-hidden">
-                            {loc.isPinned && (
-                              <div className="absolute top-0 right-0 w-6 h-6 bg-amber-600/20 flex items-start justify-end p-1 rounded-bl-2xl">
-                                <MapPin className="w-2.5 h-2.5 text-amber-400" />
-                              </div>
-                            )}
-                            <div className="flex flex-col mb-1">
-                              <span className="font-bold text-sm text-amber-400">{loc.name}</span>
-                              <span className="text-[9px] text-stone-500">位於: {loc.location}</span>
-                            </div>
-                            <p className="text-[11px] text-stone-400 mt-1">{loc.desc}</p>
-                            <div className="mt-2 flex space-x-2">
-                              <button 
-                                className={`text-[10px] px-2 py-1 rounded-lg transition ${loc.isPinned ? 'bg-stone-700/60 backdrop-blur-sm text-stone-300 hover:bg-stone-600/60' : 'border border-white/10 text-stone-400 hover:text-stone-200 hover:border-white/20'}`}
-                                onClick={() => {
-                                  setWorldMap(prev => ({
-                                    ...prev,
-                                    dynamic: prev.dynamic.map(d => d.id === loc.id ? { ...d, isPinned: !d.isPinned } : d)
-                                  }));
-                                }}
-                              >
-                                {loc.isPinned ? '取消保留' : '標記保留'}
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MapModal
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        worldMap={worldMap}
+        setWorldMap={setWorldMap}
+        mapOrigin={mapOrigin}
+        setMapOrigin={setMapOrigin}
+        mapDestination={mapDestination}
+        setMapDestination={setMapDestination}
+        calculateTravelTime={calculateTravelTime}
+      />
 
       {/* Toast Notification */}
       {toastMessage && (
