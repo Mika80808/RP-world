@@ -13,68 +13,56 @@
 
 ## 💬 待討論／待規劃
 
-- [x] **快速存檔後的紀錄顯示**（bug）
-  存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
-  2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
-
-- [x] **對話框 Markdown 模式**
-  AI 回應支援 render markdown（粗體、斜體、分隔線、顏色）。建議用 `react-markdown`，加開關讓玩家切換。
-  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。同步更新匯出檔名為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`。
-
 - [ ] **Scrollbar 樣式統一**
-  用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有石板/棕色系 UI。
+  用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有黑色系 UI。
 
-- [ ] **世界地圖視覺化 + 旅行系統**
+- [ ] **世界地圖視覺化**
+  目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
 
-  **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
-  - `mapX: number`、`mapY: number`：節點座標（固定，手動設定，單位為 SVG viewport 內的 px）
-  - `adjacentTo: string[]`：相鄰地點名稱陣列（用於畫連線）
-  - `cartFare: number`：馬車車費（銅幣，0 表示不可搭馬車）
-  - `mapStatus: 'known' | 'discovered' | 'visited'`：解鎖狀態，預設 `'known'`
-
-  **地圖 UI 重寫**（取代現有地圖 Modal 內容）：
-  - 使用 SVG canvas 繪製節點網絡圖
-  - 節點間連線用 **SVG cubic bezier 曲線**（兩端點中間自動偏移產生弧線），細實線或虛線，低透明度
-  - 節點視覺依狀態區分：
-    - 玩家所在地（`currentLocation`）：綠色微發光圓圈
-    - `visited`：正常亮色 icon
-    - `discovered`：半透明 + 問號 icon
-    - `known`：正常顯示
-  - 地圖開啟時自動 highlight 玩家所在節點
-  - **刪除**起點／終點選擇欄位
-  - **刪除**旅行時間欄位
-
-  **點選節點後右欄顯示**：
-  - 地點名稱、content 簡述
-  - 區域記憶：篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱
-  - 行動按鈕（玩家不在該地點時才顯示）：
-    - 「🐴 坐馬車前往」（`cartFare > 0` 時才顯示）
-    - 「🚶 徒步前往」
-
-  **坐馬車邏輯**：
-  ```
-  點擊「坐馬車前往」
-  → 判定 profile.gold >= cartFare
-    → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你搭上馬車，在[地點]附近下車。」
-    → 不足：按鈕下方顯示小字提示「阮囊羞澀」，不執行任何動作
-  ```
-
-  **徒步邏輯**：
-  ```
-  點擊「徒步前往」
-  → 更新 currentLocation
-  → 送出訊息「你決定徒步前往[地點]。」
-  → AI 接手安排旅途事件
-  ```
-
-  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
-  - `LOCATION_DISCOVER:地點名:類型:簡述`：將新地點加入 lorebookEntries（category='地點'，mapStatus='discovered'），並 Toast 提示「🗺️ 發現新地點：XX」
+- [ ] **旅途中發現地點融入故事**
+  AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
 
-- [ ] **NPC「角色想法」欄位**
-  每個 NPC 新增 `thoughts: string[]`（保留最近 5 則）。AI 透過 `NPC_THOUGHT:姓名:一句話` 寫入。Prompt 只注入最近 2–3 則。NPC Modal 顯示想法時間軸。
+- [ ] **新增NPC「角色想法」功能**
+
+  **功能意義**：NPC 即時產生的內心想法，讓 AI 在後續對話中能維持該 NPC 的態度與立場。
+
+  **資料結構異動**（lorebookEntries，category='NPC'）新增欄位：
+  - `relationship: string`：玩家與該 NPC 的關係描述（例如「氏族首領」「商店老闆」），玩家手動填寫
+  - `lastSeenLocation: string`：上次見面地點，前端自動更新
+  - `lastSeenDate: string`：上次見面日期（`M/D` 格式），前端自動更新
+  - `thoughts: { text: string, createdAt: string }[]`：最多保留 5 則，新的在前，超過時刪除最舊的
+
+  **上次見面自動更新邏輯**：
+  - 每次 AI 回應串流結束後，掃描回應內文是否出現該 NPC 名稱
+  - 若出現，自動將 `lastSeenLocation` 更新為 `currentLocation`、`lastSeenDate` 更新為今天日期（`M/D`）
+  - 靜默更新，不 Toast
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - 格式：`NPC_THOUGHT:姓名:一句話內心想法`
+  - 找到對應 NPC（名稱模糊比對），將新想法 unshift 進 `thoughts` 陣列頭部
+  - 超過 5 則時 pop 掉最後一則
+  - 靜默寫入，不 Toast
+
+  **Prompt 注入**（於 `buildPrompt` 的 NPC 資料區塊）：
+  - 每個被注入的 NPC，若 `thoughts.length > 0`，在其資料後附加全部 5 則想法(短句子)
+  - 格式：`[近期想法] 1.想法 / 2.想法 / ...`
+
+  **buildPrompt COMMAND FORMAT 說明新增**：
+  - 說明 AI 何時應輸出 `NPC_THOUGHT`：當 NPC 有明顯情緒變化、做出重要決定、或對玩家產生新看法時，以第一人稱輸出一句話內心想法
+
+  **NPC 詳情 Modal UI 改版**（參考確認版模擬圖）：
+  - 標題列三行排版：
+    - 第一行：姓名 ｜ 職業
+    - 第二行：關係 ｜ 好感度數值
+    - 第三行：上次見面：地點・日期
+  - 外貌、個性、備註區塊維持不變
+  - 底部新增「💭 角色想法」區塊：
+    - 5 則卡片，最新在最上方，越舊透明度越低（1.0 / 0.85 / 0.7 / 0.55 / 0.4）
+    - 每則卡片：`border-left: 2px solid rose-400`、背景 `bg-secondary`、想法文字加「」書名號、右下角顯示日期（`M/D`）
+    - 無想法時顯示灰色斜體「不知道在想什麼」
 
 - [ ] **更多前端處理項目**
   - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
@@ -161,3 +149,12 @@
 
 - [x] **GitHub repo + sync.ps1**
   2026-03-12 Claude: `sync.ps1` 放 repo 根目錄，自動抓 Downloads 最新 zip 並 push。
+
+- [x] **快速存檔後的紀錄顯示**（bug）
+  存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
+  2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
+
+- [x] **對話框 Markdown 模式**
+  AI 回應支援 render markdown（粗體、斜體、分隔線、顏色）。建議用 `react-markdown`，加開關讓玩家切換。
+  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。同步更新匯出檔名為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`。
+
