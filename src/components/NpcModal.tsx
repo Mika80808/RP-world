@@ -67,23 +67,22 @@ export const NpcModal: React.FC<NpcModalProps> = ({
         </div>
         
         <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-          <div className="flex justify-between items-start border-b border-stone-700 pb-4">
-            <div className="flex-1">
-              <h3 className="text-2xl font-bold text-stone-100">{selectedNpc.name} <span className="text-stone-400 text-sm font-normal ml-2">｜ {selectedNpc.job}</span></h3>
-              <p className="text-stone-400 text-sm mt-2 flex items-center gap-2">
-                <span>關係：{selectedNpc.relationship || '未知'}</span>
-              </p>
-              <p className="text-stone-500 text-xs mt-1">
-                上次見面：{selectedNpc.lastSeenLocation || '未知地點'}・{selectedNpc.lastSeenDate || '未知日期'}
-              </p>
-            </div>
-            <div className="flex flex-col items-end ml-4">
-              <span className="text-xs text-stone-500 uppercase tracking-wider mb-1">好感度</span>
-              <div className={`flex items-center font-bold text-lg ${selectedNpc.affection >= 80 ? 'text-emerald-400' : selectedNpc.affection >= 50 ? 'text-stone-400' : 'text-rose-400'}`}>
-                <Heart className="w-4 h-4 mr-1.5 fill-current" /> {selectedNpc.affection}
-              </div>
-              <span className="text-xs text-stone-500 mt-1">({selectedNpc.affectionLabel})</span>
-            </div>
+          <div className="border-b border-stone-700 pb-4 space-y-1">
+            <h3 className="text-2xl font-bold text-stone-100">
+              {selectedNpc.name}
+              <span className="text-stone-400 text-sm font-normal ml-2">｜ {selectedNpc.job}</span>
+            </h3>
+            <p className="text-stone-400 text-sm flex items-center gap-2">
+              <span>{selectedNpc.relationship || '關係未知'}</span>
+              <span className="text-stone-600">｜</span>
+              <span className={`flex items-center font-bold ${selectedNpc.affection >= 80 ? 'text-emerald-400' : selectedNpc.affection >= 50 ? 'text-stone-400' : 'text-rose-400'}`}>
+                <Heart className="w-3.5 h-3.5 mr-1 fill-current" /> {selectedNpc.affection}
+                <span className="text-stone-500 font-normal text-xs ml-1">({selectedNpc.affectionLabel})</span>
+              </span>
+            </p>
+            <p className="text-stone-500 text-xs">
+              上次見面：{selectedNpc.lastSeenLocation || '未知地點'}・{selectedNpc.lastSeenDate || '未知日期'}
+            </p>
           </div>
 
           <div>

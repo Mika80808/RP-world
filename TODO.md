@@ -17,11 +17,13 @@
   用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有黑色系 UI。
   2026-03-13 Gemini: 在 `src/index.css` 新增全域捲軸樣式，配合深色系 UI。
 
-- [ ] **世界地圖視覺化**
+- [x] **世界地圖視覺化**
   目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
+  2026-03-13 Claude: 重寫 `MapModal.tsx`，改用 SVG 節點地圖；依 type 分色（town/danger/city/poi）；可滑鼠拖曳 pan；hover tooltip；地形裝飾線；節點連線；圖例；搜尋欄；undiscovered 霧化效果。
 
-- [ ] **旅途中發現地點融入故事**
+- [x] **旅途中發現地點融入故事**
   AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
+  2026-03-13 Claude: 在 `parseAndExecuteCommands` 新增 `LOCATION_DISCOVER` 解析；模糊比對已知地點設 discovered=true；未知地點加入 dynamic 陣列標記「待探索」；Toast 通知；Prompt 說明 AI 何時應輸出。
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
@@ -65,6 +67,7 @@
     - 每則卡片：`border-left: 2px solid rose-400`、背景 `bg-secondary`、想法文字加「」書名號、右下角顯示日期（`M/D`）
     - 無想法時顯示灰色斜體「不知道在想什麼」
   2026-03-13 Gemini: 實作 NPC 角色想法功能，包含資料結構更新、UI 呈現、`NPC_THOUGHT` 指令解析、自動更新上次見面時間地點，以及 Prompt 注入。
+  2026-03-13 Claude: 依新規格更新：`relationship` 改為 AI 生成，新增 `NPC_RELATIONSHIP` 指令解析與 Prompt 說明；NpcModal 標題列改為三行（第二行合併關係 ｜ 好感度）。
 
 - [ ] **更多前端處理項目**
   - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
@@ -76,6 +79,34 @@
 ---
 
 ## 🔴 高優先
+
+- [x] **App.tsx 組件拆分重構**
+
+  **背景**：App.tsx 目前超過 2000 行，未來功能加入後預估達 4000–5000 行。趁功能未爆炸前先拆，降低維護成本與 AI token 消耗。
+
+  **完成後更新本檔案頂部規則為**：
+  - `App.tsx`：只保留 state、handlers、`buildPrompt`、`parseAndExecuteCommands`、API 呼叫、主介面三欄 JSX
+  - `src/components/`：純 UI 組件，只接收 props 和 callback，**不持有業務 state**
+  - AI 改功能前必須先讀取對應組件檔案
+
+  **拆分清單**（依序執行，每拆一個確認畫面正常再繼續）：
+
+  | 目標檔案 | 備註 |
+  |---|---|
+  | `src/components/DiaryModal.tsx` | 日記 Modal，handlers 留在 App.tsx 以 props 傳入 |
+  | `src/components/LorebookModal.tsx` | 設定集 Modal |
+  | `src/components/NpcModal.tsx` | NPC 詳情 Modal |
+  | `src/components/MapModal.tsx` | 地圖 Modal（已存在，確認介面一致） |
+  | `src/components/SettingsModal.tsx` | 系統設定 Modal（已存在） |
+  | `src/components/QuestModal.tsx` | 任務 Modal（已存在） |
+  | `src/components/ProfileModal.tsx` | 個人資訊 Modal（已存在） |
+  | `src/components/SystemPromptModal.tsx` | 系統提示詞 Modal（已存在） |
+
+  **每個組件的 props 設計原則**：
+  - 需要顯示的 state 資料以 props 傳入
+  - 需要修改 state 的操作以 callback 函數傳入（例如 `onClose`, `onSave`, `onChange`）
+  - 組件內不使用 `useState` 管理業務資料，只允許管理純 UI 狀態（例如搜尋框輸入值、展開折疊）
+  2026-03-13 Claude: 確認所有 8 個 Modal 已獨立於 `src/components/`，App.tsx 只保留 import + `<ComponentName props />` 使用方式，無內嵌 Modal JSX。
 
 - [x] **Prompt 記憶寫入規則**
   在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
@@ -92,13 +123,12 @@
 
 ## 🟡 中優先
 
-- [ ] **NPC 出沒設定**
-  lorebookEntries 的 NPC 類加入：`territory: string[]`（活動地點）、`appearChance: number`（出現機率 0~100）、`isLocationBound: boolean`（是否限定地點）。
-
-- [ ] **NPC 兩階段注入**
-  第一階段：進入場景時注入輕量名單（只有名字 + 職業）。
-  AI 輸出 `[出場:姓名,姓名]` 標記決定今天誰在場。
-  第二階段：偵測到出場標記後，注入完整 NPC 資料 + 相關記憶。
+- [x] **NPC 出沒系統 + 兩階段注入**
+  LorebookEntry 新增 `homeLocation`（主場）、`roamLocations`（滑動窗口，最近 3 個非主場地點）。
+  COMMANDS 新增 `NPC_NEW`（建檔同時建立 npcs entry）、`NPC_HOME`（首次寫入主場）、`NPC_LOCATION`（更新 roamLocations）。
+  Phase 1：buildPrompt 注入候選名單（輕量，name+job，最多 5 個）。
+  Phase 2：AI 輸出 `[出場:姓名,姓名]` 標記，前端解析後更新 `appearingNpcs` state，下一輪注入出場 NPC 完整資料（替換舊的 n.location 邏輯）；同時更新 lastSeen，並從顯示文字中移除標記。
+  2026-03-13 Claude: LorebookModal.tsx 介面、App.tsx（state/parseAndExecuteCommands/buildPrompt/stream後處理）
 
 ---
 
@@ -158,7 +188,9 @@
   存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
   2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
 
-- [x] **對話框 Markdown 模式**
-  AI 回應支援 render markdown（粗體、斜體、分隔線、顏色）。建議用 `react-markdown`，加開關讓玩家切換。
-  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。同步更新匯出檔名為 `RPworld-{玩家名}-{日期}-{hr}-{mi}.json`。
+- [x] **對話框 Markdown 渲染**
+  **功能意義**：AI 回應支援基本 markdown 語法渲染，避免玩家看到裸露的符號，提升閱讀體驗。
+  **套用範圍**：只套用在 `msg.role !== 'user'` 的訊息；玩家訊息維持 `whitespace-pre-wrap` 純文字顯示。
+  **函數**：`renderInline(text, keyPrefix)` 處理行內語法（`` `code` `` 玫紅、`**bold**`、`*italic*` 石板灰）；`renderMarkdown(text)` 處理整段文字（`> ` 引用區塊連續行合併、`---` 分隔線、空行間距、普通段落）。
+  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。引用區塊樣式：`border-l-2 border-stone-500 bg-stone-800/30`；分隔線：`border-stone-700/60`。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。
 
