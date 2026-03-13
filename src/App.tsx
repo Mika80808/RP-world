@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Save, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package, Beaker, Globe, Users, Heart, MapPin, Zap, Coins, Calendar, Shield, Plus, Trash2, CheckSquare, Square, Download, Upload, RotateCcw, Lock, ChevronDown, ChevronRight, Map as MapIcon, Navigation, Cloud, Sun, CloudRain, Snowflake, Moon, Wind, Leaf, Star, Sparkles, Pin, Brain, Search, BookPlus } from 'lucide-react';
+import { Settings, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package, Beaker, Globe, Users, Heart, MapPin, Zap, Coins, Calendar, Shield, Plus, Trash2, CheckSquare, Square, Download, Upload, RotateCcw, Lock, ChevronDown, ChevronRight, Map as MapIcon, Navigation, Cloud, Sun, CloudRain, Snowflake, Moon, Wind, Leaf, Star, Sparkles, Pin, Brain, Search, BookPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { DiaryModal } from './components/DiaryModal';
@@ -510,14 +510,16 @@ ${recentChat}
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleQuickSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
-    localStorage.setItem('rpworld_save', JSON.stringify(saveData));
-    const now = new Date();
-    localStorage.setItem('rpworld_last_saved', now.toISOString());
-    setLastSavedAt(now);
-    showToast('已快速存檔');
-  };
+  // 每次 AI 回應結束後自動存檔
+  useEffect(() => {
+    if (!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant') {
+      const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
+      localStorage.setItem('rpworld_save', JSON.stringify(saveData));
+      const now = new Date();
+      localStorage.setItem('rpworld_last_saved', now.toISOString());
+      setLastSavedAt(now);
+    }
+  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleExportSave = () => {
     const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
@@ -1648,14 +1650,8 @@ Please respond as the DM.`;
 
           <div className="flex-1"></div>
 
-          <div className="flex space-x-2 mt-auto">
-            <button 
-              onClick={handleQuickSave}
-              className="flex-1 bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 p-2 rounded-xl flex items-center justify-center transition text-sm"
-            >
-              <Save className="w-4 h-4 mr-2" /> 存檔
-            </button>
-            <button 
+          <div className="flex mt-auto">
+            <button
               onClick={() => setIsSettingsModalOpen(true)}
               className="flex-1 bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 p-2 rounded-xl flex items-center justify-center transition text-sm"
             >
