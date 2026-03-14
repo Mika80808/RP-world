@@ -48,6 +48,7 @@
 
 - [x] **世界地圖重寫（深藍金風格 + 旅行系統）**
   2026-03-14 [Claude]: `MapModal.tsx` 完整視覺重寫：深海藍底色（#0a1628）+ 金色手稿風格；八角星芒節點（known/current/selected）+ 虛線圓形（discovered）；金色 bezier 虛線曲線；四角 L 型裝飾線；格線紋理 + 暗角；羅盤（左下角，點擊重置視角）；Header 搜尋欄；右欄兩段式旅行選擇（選方式→啟程）；圖例移至右欄底部。App.tsx 新增 `showToast` prop 傳入 MapModal。TypeScript 零錯誤。
+  2026-03-15 [Claude]: 後續細節調整（v14）：刪除圖例；選取改圓型發光；移除 hover tooltip；月湖鎮+異鄉人公寓座標分群合併；前往方式固定底部；區域記憶獨立分區；修正 Rules of Hooks 違反、discovered 選取無反饋、搜尋欄篩選不完整三項 bug。
 
   **視覺設計語彙**（深海藍 × 金色手稿風）：
   - 整體底色：`#0a1628`（深海藍）
