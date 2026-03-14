@@ -14,6 +14,9 @@
 - **組件重構**：更新 `App.tsx` 及所有 Modal 組件（`ProfileModal`, `NpcModal`, `QuestModal`, `LorebookModal`, `SystemPromptModal`, `MapModal`, `DiaryModal`, `SettingsModal`），移除本地重複的型別與常數定義，改為引用統一的檔案。
 - **狀態初始化優化**：更新 `App.tsx` 中的狀態初始值，確保使用正確的型別與預設常數。
 
+### 存檔 Icon 修正
+- 修正「匯出存檔」與「匯入存檔」圖示相反的問題：匯出改為 `Upload` (向上)，匯入改為 `Download` (向下)。
+
 ---
 
 ## [2026-03-13] v8

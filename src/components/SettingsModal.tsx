@@ -107,7 +107,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={handleExportSave}
             className="w-full bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 text-stone-200 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
           >
-            <span className="flex items-center"><Download className="w-4 h-4 mr-3 text-indigo-400" /> 匯出存檔</span>
+            <span className="flex items-center"><Upload className="w-4 h-4 mr-3 text-indigo-400" /> 匯出存檔</span>
             <span className="text-xs text-stone-400">下載 JSON 檔</span>
           </button>
           
@@ -115,7 +115,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="w-full bg-stone-800/40 backdrop-blur-sm border border-white/5 hover:bg-stone-700/50 text-stone-200 py-3 px-4 rounded-2xl flex items-center justify-between transition shadow-sm"
           >
-            <span className="flex items-center"><Upload className="w-4 h-4 mr-3 text-emerald-400" /> 匯入存檔</span>
+            <span className="flex items-center"><Download className="w-4 h-4 mr-3 text-emerald-400" /> 匯入存檔</span>
             <span className="text-xs text-stone-400">讀取 JSON 檔</span>
           </button>
           <input 
