@@ -8,127 +8,111 @@
 >    `YYYY-MM-DD [AI名稱]: 簡述改了什麼函數/檔案/區塊`
 > 3. 同步更新 CHANGELOG.md 對應版本區塊
 > 4. 當 [x] 項目累積過多時，由 User 定期清空
-
----
-
-## 💬 待討論／待規劃
-
-- [x] **Scrollbar 樣式統一**
-  用 `::-webkit-scrollbar` CSS 自訂滾動條樣式，配合現有黑色系 UI。
-  2026-03-13 Gemini: 在 `src/index.css` 新增全域捲軸樣式，配合深色系 UI。
-
-- [x] **世界地圖視覺化**
-  目前地圖過於簡陋。方向：SVG 手繪地形 或 可拖曳節點地圖（含霧效、發現/未發現標記）。
-  2026-03-13 Claude: 重寫 `MapModal.tsx`，改用 SVG 節點地圖；依 type 分色（town/danger/city/poi）；可滑鼠拖曳 pan；hover tooltip；地形裝飾線；節點連線；圖例；搜尋欄；undiscovered 霧化效果。
-
-- [x] **旅途中發現地點融入故事**
-  AI 輸出 `LOCATION_DISCOVER:地點名` → 前端加入地圖標記「待探索」→ 玩家選擇前往後正式解鎖。與地圖視覺化一起實作。
-  2026-03-13 Claude: 在 `parseAndExecuteCommands` 新增 `LOCATION_DISCOVER` 解析；模糊比對已知地點設 discovered=true；未知地點加入 dynamic 陣列標記「待探索」；Toast 通知；Prompt 說明 AI 何時應輸出。
-
-- [ ] **多配色主題**
-  用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
-
-- [x] **新增NPC「角色想法」功能**
-
-  **功能意義**：NPC 即時產生的內心想法，讓 AI 在後續對話中能維持該 NPC 的態度與立場。
-
-  **資料結構異動**（lorebookEntries，category='NPC'）新增欄位：
-  - `relationship: string`：玩家與該 NPC 的關係描述（例如「氏族首領」「商店老闆」），玩家手動填寫
-  - `lastSeenLocation: string`：上次見面地點，前端自動更新
-  - `lastSeenDate: string`：上次見面日期（`M/D` 格式），前端自動更新
-  - `thoughts: { text: string, createdAt: string }[]`：最多保留 5 則，新的在前，超過時刪除最舊的
-
-  **上次見面自動更新邏輯**：
-  - 每次 AI 回應串流結束後，掃描回應內文是否出現該 NPC 名稱
-  - 若出現，自動將 `lastSeenLocation` 更新為 `currentLocation`、`lastSeenDate` 更新為今天日期（`M/D`）
-  - 靜默更新，不 Toast
-
-  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
-  - 格式：`NPC_THOUGHT:姓名:一句話內心想法`
-  - 找到對應 NPC（名稱模糊比對），將新想法 unshift 進 `thoughts` 陣列頭部
-  - 超過 5 則時 pop 掉最後一則
-  - 靜默寫入，不 Toast
-
-  **Prompt 注入**（於 `buildPrompt` 的 NPC 資料區塊）：
-  - 每個被注入的 NPC，若 `thoughts.length > 0`，在其資料後附加全部 5 則想法(短句子)
-  - 格式：`[近期想法] 1.想法 / 2.想法 / ...`
-
-  **buildPrompt COMMAND FORMAT 說明新增**：
-  - 說明 AI 何時應輸出 `NPC_THOUGHT`：當 NPC 有明顯情緒變化、做出重要決定、或對玩家產生新看法時，以第一人稱輸出一句話內心想法
-
-  **NPC 詳情 Modal UI 改版**（參考確認版模擬圖）：
-  - 標題列三行排版：
-    - 第一行：姓名 ｜ 職業
-    - 第二行：關係 ｜ 好感度數值
-    - 第三行：上次見面：地點・日期
-  - 外貌、個性、備註區塊維持不變
-  - 底部新增「💭 角色想法」區塊：
-    - 5 則卡片，最新在最上方，越舊透明度越低（1.0 / 0.85 / 0.7 / 0.55 / 0.4）
-    - 每則卡片：`border-left: 2px solid rose-400`、背景 `bg-secondary`、想法文字加「」書名號、右下角顯示日期（`M/D`）
-    - 無想法時顯示灰色斜體「不知道在想什麼」
-  2026-03-13 Gemini: 實作 NPC 角色想法功能，包含資料結構更新、UI 呈現、`NPC_THOUGHT` 指令解析、自動更新上次見面時間地點，以及 Prompt 注入。
-  2026-03-13 Claude: 依新規格更新：`relationship` 改為 AI 生成，新增 `NPC_RELATIONSHIP` 指令解析與 Prompt 說明；NpcModal 標題列改為三行（第二行合併關係 ｜ 好感度）。
-
-- [ ] **更多前端處理項目**
-  - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
-  - HP/MP 動態條動畫（數字跳動、條縮短）
-  - 對話 token 用量估算顯示
-  - 道具 `effect` 欄位由前端直接套用數值
-  - 自動存檔（每 N 則對話觸發）
+>
+> **架構規則（重構完成後生效）：**
+> - `App.tsx`：只保留 state、handlers、`buildPrompt`、`parseAndExecuteCommands`、API 呼叫、主介面三欄 JSX
+> - `src/components/`：純 UI 組件，只接收 props 和 callback，不持有業務 state
+> - AI 改功能前必須先讀取對應組件檔案
 
 ---
 
 ## 🔴 高優先
 
-- [x] **App.tsx 組件拆分重構**
+- [ ] **任務系統規格升級**
 
-  **背景**：App.tsx 目前超過 2000 行，未來功能加入後預估達 4000–5000 行。趁功能未爆炸前先拆，降低維護成本與 AI token 消耗。
+  **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。
 
-  **完成後更新本檔案頂部規則為**：
-  - `App.tsx`：只保留 state、handlers、`buildPrompt`、`parseAndExecuteCommands`、API 呼叫、主介面三欄 JSX
-  - `src/components/`：純 UI 組件，只接收 props 和 callback，**不持有業務 state**
-  - AI 改功能前必須先讀取對應組件檔案
+  **資料結構**（新增 `quests` state，陣列，存入 localStorage 存檔）：
+  ```
+  {
+    id: number,           // 自動遞增
+    title: string,        // 任務名稱（唯一識別，Prompt 注入與 QUEST_COMPLETE 比對依據）
+    giver: string,        // 委託人 NPC 名稱
+    description: string,  // 目標描述
+    reward: {
+      gold?: number,
+      items?: string[]
+    },
+    deadline?: number,    // 遊戲內天數，null 表示無期限
+    status: 'active' | 'completed' | 'failed',
+    createdAt: string,    // 遊戲內日期 M/D
+    completedAt?: string
+  }
+  ```
 
-  **拆分清單**（依序執行，每拆一個確認畫面正常再繼續）：
+  **COMMANDS 新增 / 修正指令**（於 `parseAndExecuteCommands` 解析）：
+  - `QUEST_ADD:任務名:委託人:目標描述:獎勵金幣:獎勵道具:期限天數`
+    - 建立新任務，status='active'，自動開啟 QuestModal
+    - Toast：「📋 新任務：XX」
+    - 獎勵道具可為空，期限天數可為空（無期限）
+  - `QUEST_COMPLETE:任務名`
+    - 用任務名稱比對找到對應任務，status 改為 'completed'，目標描述前勾選框打勾
+    - 自動發放獎勵：gold 加入 `profile.gold`，items 加入 `inventory`
+    - Toast：「✅ 任務完成：XX，獲得 XX 銅」
 
-  | 目標檔案 | 備註 |
-  |---|---|
-  | `src/components/DiaryModal.tsx` | 日記 Modal，handlers 留在 App.tsx 以 props 傳入 |
-  | `src/components/LorebookModal.tsx` | 設定集 Modal |
-  | `src/components/NpcModal.tsx` | NPC 詳情 Modal |
-  | `src/components/MapModal.tsx` | 地圖 Modal（已存在，確認介面一致） |
-  | `src/components/SettingsModal.tsx` | 系統設定 Modal（已存在） |
-  | `src/components/QuestModal.tsx` | 任務 Modal（已存在） |
-  | `src/components/ProfileModal.tsx` | 個人資訊 Modal（已存在） |
-  | `src/components/SystemPromptModal.tsx` | 系統提示詞 Modal（已存在） |
+  **期限自動失敗**：
+  - 每次 `TIME_ADVANCE` 指令執行後，前端掃描所有 status='active' 的任務
+  - 計算遊戲累計天數是否超過 `deadline`，超過則自動標記 status='failed'
+  - Toast：「❌ 任務失敗：XX」
 
-  **每個組件的 props 設計原則**：
-  - 需要顯示的 state 資料以 props 傳入
-  - 需要修改 state 的操作以 callback 函數傳入（例如 `onClose`, `onSave`, `onChange`）
-  - 組件內不使用 `useState` 管理業務資料，只允許管理純 UI 狀態（例如搜尋框輸入值、展開折疊）
-  2026-03-13 Claude: 確認所有 8 個 Modal 已獨立於 `src/components/`，App.tsx 只保留 import + `<ComponentName props />` 使用方式，無內嵌 Modal JSX。
+  **Prompt 注入**（於 `buildPrompt`）：
+  - 注入所有 status='active' 的任務清單：
+    ```
+    [進行中任務]
+    尋找失蹤的藥草（委託：烏爾夫，剩 3 天）
+    送信給獵人公會（委託：芬里爾，無期限）
+    ```
+  - COMMAND FORMAT 說明補充：
+    - `QUEST_ADD`：NPC 委託玩家任務、或布告欄出現可接取的任務時輸出
+    - `QUEST_COMPLETE`：玩家向委託人回報、AI 判斷任務確實達成時輸出，使用與建立時完全相同的任務名稱
 
-- [x] **Prompt 記憶寫入規則**
-  在 `buildPrompt` 的 COMMAND FORMAT 說明裡，加入「AI 何時應輸出 MEMORY_ADD」的規則。
-  包含五種情境：世界事件 / 區域事件 / 場景狀態改變 / NPC 情報 / 玩家重要事件。
-  特別規則：AI 回應裡出現 `[ ]` 布告欄內容時，必定觸發 `MEMORY_ADD:region`。
-  2026-03-13 Gemini: 在 `buildPrompt` 的 COMMAND FORMAT 區塊新增【AI 何時應輸出 MEMORY_ADD】說明，定義五大情境與布告欄觸發規則。
+  **QuestModal UI**（`src/components/QuestModal.tsx`）：
+  - 頂部三個狀態計數：進行中 / 已完成 / 失敗
+  - 每張任務卡片顯示：任務名、委託人、目標描述（前方有勾選框，由前端控制）、獎勵（金幣＋道具）、接受日期
+  - 進行中：綠色邊框，右上角顯示剩餘天數或「無期限」
+  - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
+  - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
 
-- [x] **任務系統動態化**
-  目前任務 Modal 為空白。
-  需要：AI 可透過 COMMANDS 寫入任務（新增 `QUEST_ADD` / `QUEST_COMPLETE` 指令）、右側或 Modal 顯示任務列表。
-  2026-03-13 Gemini: 新增 `quests` state，在 `parseAndExecuteCommands` 實作 `QUEST_ADD` 與 `QUEST_COMPLETE` 解析，並傳遞至 `QuestModal` 顯示進行中、可接取、已完成任務。
+- [ ] **道具 effect 前端處理**
+
+  **功能意義**：消耗品使用後由前端直接套用數值變化，不需要 AI 介入計算，減少 token 消耗並確保數值即時更新。
+
+  **資料結構異動**（`consumables` 陣列每個項目）新增欄位：
+  - `effect?: { hp?: number, mp?: number, gold?: number, status?: string }`
+  - 數值正數為增加，負數為扣除
+  - `status` 為狀態異常字串，例如 `'poisoned'`、`'blessed'`（目前前端顯示用，暫不做複雜邏輯）
+  - effect 由 AI 透過 `ITEM_ADD` 指令建立消耗品時一併寫入，玩家不能修改
+
+  **抽出共用函數 `applyItemEffect(itemName: string)`**（兩種觸發方式共用）：
+  - 在 `consumables` 中找到對應道具
+  - 套用 effect：`hp` 加入 `profile.hp`、`mp` 加入 `profile.mp`、`gold` 加入 `profile.gold`、`status` 寫入 `profile.status`
+  - 數量 -1，歸零時從 `consumables` 移除
+  - Toast：「🧪 使用 XX：HP +30」（依實際 effect 內容動態產生）
+
+  **觸發方式一：道具欄點擊「使用」按鈕**：
+  - 前端呼叫 `applyItemEffect(itemName)`
+  - 同時送出訊息給 AI：「（玩家使用了 XX，效果已套用）」，讓 AI 接續描述場景反應
+
+  **觸發方式二：AI 輸出 ITEM_USE 指令**：
+  - 格式：`ITEM_USE:道具名`
+  - 於 `parseAndExecuteCommands` 解析，呼叫 `applyItemEffect(itemName)`
+  - 沉浸式玩家在對話中描述使用道具時，AI 自行判斷並輸出此指令
+
+  **buildPrompt COMMAND FORMAT 說明補充**：
+  - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
 
 ---
 
 ## 🟡 中優先
 
-- [x] **NPC 出沒系統 + 兩階段注入**
-  LorebookEntry 新增 `homeLocation`（主場）、`roamLocations`（滑動窗口，最近 3 個非主場地點）。
-  COMMANDS 新增 `NPC_NEW`（建檔同時建立 npcs entry）、`NPC_HOME`（首次寫入主場）、`NPC_LOCATION`（更新 roamLocations）。
-  Phase 1：buildPrompt 注入候選名單（輕量，name+job，最多 5 個）。
-  Phase 2：AI 輸出 `[出場:姓名,姓名]` 標記，前端解析後更新 `appearingNpcs` state，下一輪注入出場 NPC 完整資料（替換舊的 n.location 邏輯）；同時更新 lastSeen，並從顯示文字中移除標記。
-  2026-03-13 Claude: LorebookModal.tsx 介面、App.tsx（state/parseAndExecuteCommands/buildPrompt/stream後處理）
+- [ ] **多配色主題**
+  用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
+
+- [ ] **更多前端處理項目**
+  - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
+  - HP/MP 動態條動畫（數字跳動、條縮短）
+  - 對話 token 用量估算顯示
+  - 自動存檔（每 N 則對話觸發，使用 `useEffect` 監聽 `messages`，靜默存入 `rpworld_save`）
 
 ---
 
@@ -139,7 +123,7 @@
   建議：保留最近 20 則原文，更早的壓縮成 200 字摘要。
 
 - [ ] **Firebase 雲端儲存**
-  取代 localStorage，支援跨裝置同步。
+  取代 localStorage，支援跨裝置同步。（目前已決定暫緩）
 
 - [ ] **向量語意搜尋記憶**
   進階記憶檢索，不依賴關鍵字，改用語意相似度判斷是否注入。
@@ -185,12 +169,32 @@
   2026-03-12 Claude: `sync.ps1` 放 repo 根目錄，自動抓 Downloads 最新 zip 並 push。
 
 - [x] **快速存檔後的紀錄顯示**（bug）
-  存檔成功但 UI 沒反應，需在 `handleQuickSave` 完成後更新 `lastSavedAt` state，顯示「上次存檔：XX:XX」。
   2026-03-13 Claude: 新增 `lastSavedAt` state，`handleQuickSave` 存檔後呼叫 `setLastSavedAt(new Date())`，存檔按鈕下方顯示「上次存檔 HH:MM:SS」。
 
 - [x] **對話框 Markdown 渲染**
-  **功能意義**：AI 回應支援基本 markdown 語法渲染，避免玩家看到裸露的符號，提升閱讀體驗。
-  **套用範圍**：只套用在 `msg.role !== 'user'` 的訊息；玩家訊息維持 `whitespace-pre-wrap` 純文字顯示。
-  **函數**：`renderInline(text, keyPrefix)` 處理行內語法（`` `code` `` 玫紅、`**bold**`、`*italic*` 石板灰）；`renderMarkdown(text)` 處理整段文字（`> ` 引用區塊連續行合併、`---` 分隔線、空行間距、普通段落）。
-  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。引用區塊樣式：`border-l-2 border-stone-500 bg-stone-800/30`；分隔線：`border-stone-700/60`。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。
+  2026-03-13 Claude: 新增 `renderInline()` + `renderMarkdown()` 於 component 外部。支援 `` `code` ``（玫紅）、`**bold**`、`*italic*`（石板灰）、`>` 引用區塊（連續行合併）、`---` 分隔線。`msg.role !== 'user'` 時呼叫，玩家訊息維持 `whitespace-pre-wrap`。引用區塊樣式：`border-l-2 border-stone-500 bg-stone-800/30`。
 
+- [x] **Scrollbar 樣式統一**
+  2026-03-13 Gemini: 在 `src/index.css` 新增全域捲軸樣式，配合深色系 UI。
+
+- [x] **世界地圖視覺化**
+  2026-03-13 Claude: 重寫 `MapModal.tsx`，改用 SVG 節點地圖；依 type 分色（town/danger/city/poi）；可滑鼠拖曳 pan；hover tooltip；地形裝飾線；節點連線；圖例；搜尋欄；undiscovered 霧化效果。
+
+- [x] **旅途中發現地點融入故事**
+  2026-03-13 Claude: 在 `parseAndExecuteCommands` 新增 `LOCATION_DISCOVER` 解析；模糊比對已知地點設 discovered=true；未知地點加入 dynamic 陣列標記「待探索」；Toast 通知；Prompt 說明 AI 何時應輸出。
+
+- [x] **NPC「角色想法」功能**
+  2026-03-13 Gemini: 實作 NPC 角色想法功能，包含資料結構更新、UI 呈現、`NPC_THOUGHT` 指令解析、自動更新上次見面時間地點，以及 Prompt 注入。
+  2026-03-13 Claude: 依新規格更新：`relationship` 改為 AI 生成，新增 `NPC_RELATIONSHIP` 指令解析與 Prompt 說明；NpcModal 標題列改為三行（第二行合併關係 ｜ 好感度）。
+
+- [x] **App.tsx 組件拆分重構**
+  2026-03-13 Claude: 確認所有 8 個 Modal 已獨立於 `src/components/`，App.tsx 只保留 import + `<ComponentName props />` 使用方式，無內嵌 Modal JSX。
+
+- [x] **Prompt 記憶寫入規則**
+  2026-03-13 Gemini: 在 `buildPrompt` 的 COMMAND FORMAT 區塊新增【AI 何時應輸出 MEMORY_ADD】說明，定義五大情境與布告欄觸發規則。
+
+- [x] **任務系統動態化（初版）**
+  2026-03-13 Gemini: 新增 `quests` state，在 `parseAndExecuteCommands` 實作 `QUEST_ADD` 與 `QUEST_COMPLETE` 解析，並傳遞至 `QuestModal` 顯示進行中、可接取、已完成任務。
+
+- [x] **NPC 出沒系統 + 兩階段注入**
+  2026-03-13 Claude: LorebookModal.tsx 介面、App.tsx（state/parseAndExecuteCommands/buildPrompt/stream 後處理）。LorebookEntry 新增 `homeLocation`、`roamLocations`（滑動窗口最近 3 個）。COMMANDS 新增 `NPC_NEW`、`NPC_HOME`、`NPC_LOCATION`。Phase 1 注入候選名單（輕量，最多 5 個）；Phase 2 偵測 `[出場:姓名]` 後注入完整資料。
