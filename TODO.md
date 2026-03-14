@@ -18,15 +18,17 @@
 
 ## 🔴 高優先
 
-- [ ] **重構 App.tsx 狀態管理**
+- [x] **重構 App.tsx 狀態管理**
   **功能意義**：目前 `App.tsx` 仍持有大量與 `useGameStore` 重複的冗餘 state，且初始化邏輯不一致。
   **任務內容**：
   - 將 `App.tsx` 的所有遊戲狀態完全遷移至 `useGameStore`。
   - 統一 `localStorage` 鍵名，確保存檔讀取路徑唯一。
   - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
+  2026-03-14 [Claude]: 建立 `src/hooks/useGameStore.ts`（所有遊戲 state + saveToStorage/loadFromData）、`src/hooks/useCommandParser.ts`（parseAndExecuteCommands/applyItemEffect/scanKeywords/isMemoryTriggered/tickMemoryCounters）。App.tsx 移除約 509 行冗餘程式碼，改為 UI 容器。修正 `src/types.ts`（DiaryEntry 欄位修正、新增 MemoryEntry/InventoryItem/ConsumableItem）。重建被刪除的 `src/main.tsx` 與 `src/index.css`。TypeScript 零錯誤，伺服器正常啟動。
 
-- [ ] **修復 Profile 屬性與類型安全**
+- [x] **修復 Profile 屬性與類型安全**
   - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
+  2026-03-14 [Claude]: `types.ts` 補齊 DiaryEntry（修正欄位對應實際用法）、MemoryEntry、InventoryItem、ConsumableItem 型別定義。useGameStore/useCommandParser 全面使用具體型別，消除 `any`。
 
 - [ ] **任務系統規格升級**
 

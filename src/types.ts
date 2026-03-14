@@ -82,10 +82,55 @@ export interface SystemPrompt {
 
 export interface DiaryEntry {
   id: number;
-  date: string;
+  text: string;
+  isActive: boolean;
+  keywords: string[];
+  source?: 'manual' | 'ai_generated' | 'merged';
+  mergedFrom?: number[];
+  isMerged?: boolean;
+}
+
+export interface MemoryEntry {
+  id: string;
+  type: 'world' | 'region' | 'scene' | 'npc';
+  importance: 'critical' | 'normal' | 'flavor';
   content: string;
-  location: string;
-  mood?: string;
+  tags: {
+    locations: string[];
+    npcs: string[];
+    factions: string[];
+    keywords: string[];
+  };
+  trigger: {
+    scanDepth: number;
+    probability: number;
+    sticky: number;
+    cooldown: number;
+  };
+  isActive: boolean;
+  source: 'manual' | 'ai_generated';
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface InventoryItem {
+  id: number;
+  name: string;
+  quantity: number;
+  description: string;
+}
+
+export interface ConsumableItem {
+  id: number;
+  name: string;
+  quantity: number;
+  description: string;
+  effect?: {
+    hp?: number;
+    mp?: number;
+    gold?: number;
+    status?: string;
+  };
 }
 
 export interface Message {

@@ -5,7 +5,21 @@
 
 ---
 
-## [2026-03-14] v9（當前版本）
+## [2026-03-14] v10（當前版本）
+
+### App.tsx 狀態管理重構 + 型別安全全面修正
+將 App.tsx 從「大雜燴」重構為純 UI 容器，邏輯完全由自訂 Hooks 驅動。
+
+- **`src/hooks/useGameStore.ts`（新增）**：集中管理所有遊戲狀態（timeState, profile, systemPrompt, npcs, memories, quests, diaryEntries, lorebookEntries, inventory, consumables, messages, quickOptions, worldMap 等）。提供 `saveToStorage()` 統一存檔入口（key 固定為 `rpworld_save`），以及 `loadFromData()` 匯入舊存檔並自動 migrate 舊格式（worldMemory / factionMemory / locationMemory）。
+- **`src/hooks/useCommandParser.ts`（新增）**：封裝 `parseAndExecuteCommands`、`applyItemEffect`、`scanKeywords`、`isMemoryTriggered`、`tickMemoryCounters`，接受 store 切面作為依賴，透過 `onNewQuest` callback 解耦 UI 狀態。
+- **`src/App.tsx`**：移除 509 行遊戲邏輯，僅保留 UI state（Modal 開關、輸入、loading）、`buildPrompt`、`handleSendMessage` 及 JSX。存檔/匯入/重置改呼叫 hook 提供的函數，避免重複邏輯。
+- **`src/types.ts`**：修正 `DiaryEntry`（對應實際 `text/isActive/keywords` 欄位）；新增 `MemoryEntry`、`InventoryItem`、`ConsumableItem` 完整型別定義，消除 `any`。
+- **`src/main.tsx` + `src/index.css`（重建）**：補回被 GitHub 版本刪除的兩個入口檔案。
+- TypeScript 編譯零錯誤，`npx tsc --noEmit` 通過。
+
+---
+
+## [2026-03-14] v9
 
 ### 型別與常數提取重構
 為了提升程式碼的可維護性與一致性，進行了大規模的型別與常數提取重構。

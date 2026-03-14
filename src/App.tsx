@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package, Beaker, Globe, Users, Heart, MapPin, Zap, Coins, Calendar, Shield, Plus, Trash2, CheckSquare, Square, Download, Upload, RotateCcw, Lock, ChevronDown, ChevronRight, Map as MapIcon, Navigation, Cloud, Sun, CloudRain, Snowflake, Moon, Wind, Leaf, Star, Sparkles, Pin, Brain, Search, BookPlus } from 'lucide-react';
+import { Settings, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package, Beaker, Globe, Users, Heart, MapPin, Zap, Coins, Calendar, Shield, CheckSquare, ChevronDown, ChevronRight, Map as MapIcon, Cloud, Sun, CloudRain, Snowflake, Moon, Wind, Sparkles, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { DiaryModal } from './components/DiaryModal';
@@ -10,14 +10,10 @@ import { ProfileModal } from './components/ProfileModal';
 import { SystemPromptModal } from './components/SystemPromptModal';
 import { SettingsModal } from './components/SettingsModal';
 import { MapModal } from './components/MapModal';
-import { 
-  Profile, Npc, Quest, LorebookEntry, SystemPrompt, 
-  TimeState, WorldMap, Message, DiaryEntry 
-} from './types';
-import { 
-  MONTHS_DATA, INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, 
-  INITIAL_WORLD_MAP, TOKEN_OPTIONS 
-} from './constants';
+import { Npc, LorebookEntry } from './types';
+import { MONTHS_DATA, TOKEN_OPTIONS } from './constants';
+import { useGameStore, SAVE_KEY } from './hooks/useGameStore';
+import { useCommandParser } from './hooks/useCommandParser';
 
 // ─── Markdown Parser ─────────────────────────────────────────────────────────
 
@@ -86,6 +82,7 @@ function renderMarkdown(text: string): React.ReactNode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  // ─── UI 狀態（Modal / 輸入 / 載入）──────────────────────────────────────────
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDiaryModalOpen, setIsDiaryModalOpen] = useState(false);
@@ -94,43 +91,70 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isConsumablesOpen, setIsConsumablesOpen] = useState(false);
-  const [selectedInventoryItem, setSelectedInventoryItem] = useState<string | null>(null);
-  const [selectedConsumableItem, setSelectedConsumableItem] = useState<string | null>(null);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<number | null>(null);
+  const [selectedConsumableItem, setSelectedConsumableItem] = useState<number | null>(null);
   const [selectedNpc, setSelectedNpc] = useState<Npc | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
     const saved = localStorage.getItem('rpworld_last_saved');
     return saved ? new Date(saved) : null;
   });
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editMessageText, setEditMessageText] = useState('');
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [mapOrigin, setMapOrigin] = useState<string | null>(null);
+  const [mapDestination, setMapDestination] = useState<string | null>(null);
+
+  // ─── API 設定（不屬於遊戲存檔，獨立存於 localStorage）───────────────────────
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(
+    () => localStorage.getItem('gemini_api_key') || ''
+  );
+  const [maxTokens, setMaxTokens] = useState<number>(
+    () => parseInt(localStorage.getItem('gemini_max_tokens') || '32768')
+  );
+
+  // ─── 遊戲狀態（useGameStore）────────────────────────────────────────────────
+  const store = useGameStore();
+  const {
+    timeState, setTimeState,
+    profile, setProfile,
+    systemPrompt, setSystemPrompt,
+    npcs, setNpcs,
+    appearingNpcs, setAppearingNpcs,
+    currentLocation, setCurrentLocation,
+    memories, setMemories,
+    stickyCounters, setStickyCounters,
+    cooldownCounters, setCooldownCounters,
+    quests, setQuests,
+    diaryEntries, setDiaryEntries,
+    lorebookEntries, setLorebookEntries,
+    inventory, setInventory,
+    consumables, setConsumables,
+    messages, setMessages,
+    quickOptions, setQuickOptions,
+    worldMap, setWorldMap,
+    saveToStorage,
+    loadFromData,
+  } = store;
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ─── 啟動時讀取快捷存檔 ───────────────────────────────────────────────────────
-  const _s = (() => {
-    try {
-      const raw = localStorage.getItem('rpworld_save');
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  })();
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const [timeState, setTimeState] = useState<TimeState>(() => _s?.timeState || {
-    year: 1024,
-    month: 4,
-    day: 15,
-    hour: 21,
-    minute: 30,
-    weather: '晴朗', // 晴朗, 陰天, 下雨, 下雪, 起霧
-  });
-
+  // ─── 時間工具 ────────────────────────────────────────────────────────────────
   const getTimeOfDay = (hour: number) => {
     if (hour >= 5 && hour < 9) return '清晨';
     if (hour >= 9 && hour < 16) return '白天';
     if (hour >= 16 && hour < 19) return '黃昏';
     return '夜晚';
   };
-
   const timeOfDay = getTimeOfDay(timeState.hour);
-
   const currentMonthData = MONTHS_DATA.find(m => m.id === timeState.month) || MONTHS_DATA[0];
 
   const getWeatherIcon = () => {
@@ -143,7 +167,6 @@ export default function App() {
       default: return <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-400" />;
     }
   };
-
   const getCelestialIcon = () => {
     if (timeState.month === 4) {
       return (
@@ -159,70 +182,26 @@ export default function App() {
     return <Sun className="w-3.5 h-3.5 mr-1.5 text-amber-500 opacity-50" />;
   };
 
-  const [npcs, setNpcs] = useState<Npc[]>(() => _s?.npcs || []);
-  const [appearingNpcs, setAppearingNpcs] = useState<string[]>(() => _s?.appearingNpcs || []);
+  // ─── Toast ──────────────────────────────────────────────────────────────────
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
-  const [currentLocation, setCurrentLocation] = useState(() => _s?.currentLocation || '迷霧森林');
+  // ─── 指令解析器（useCommandParser）─────────────────────────────────────────
+  const { parseAndExecuteCommands, applyItemEffect, scanKeywords, isMemoryTriggered, tickMemoryCounters } =
+    useCommandParser({
+      timeState, currentLocation, quests, memories, consumables,
+      stickyCounters, cooldownCounters, messages,
+      setTimeState, setProfile, setCurrentLocation, setQuests,
+      setMemories, setInventory, setConsumables, setNpcs,
+      setLorebookEntries, setWorldMap, setQuickOptions,
+      setStickyCounters, setCooldownCounters,
+      showToast,
+      onNewQuest: () => setIsQuestModalOpen(true),
+    });
 
-  // ─── API Key ──────────────────────────────────────────────────────────────────
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(
-    () => localStorage.getItem('gemini_api_key') || ''
-  );
-
-  // ─── Max Tokens ───────────────────────────────────────────────────────────────
-  const [maxTokens, setMaxTokens] = useState<number>(
-    () => parseInt(localStorage.getItem('gemini_max_tokens') || '32768')
-  );
-
-  // ─── 統一記憶陣列 ────────────────────────────────────────────────────────────
-  const [memories, setMemories] = useState<any[]>(() => _s?.memories || []);
-  const [stickyCounters, setStickyCounters] = useState<Record<string, number>>({});
-  const [cooldownCounters, setCooldownCounters] = useState<Record<string, number>>({});
-
-  const [quests, setQuests] = useState<Quest[]>(() => _s?.quests || []);
-
-  const [profile, setProfile] = useState<Profile>(() => _s?.profile || {
-    name: '異鄉人',
-    job: '異鄉人',
-    appearance: '',
-    personality: '',
-    other: '',
-    hp: 50,
-    mp: 0,
-    gold: 0
-  });
-
-  const [systemPrompt, setSystemPrompt] = useState<SystemPrompt>(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT);
-
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => _s?.diaryEntries || []);
-
-  const [lorebookEntries, setLorebookEntries] = useState<LorebookEntry[]>(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES);
-
-  const [inventory, setInventory] = useState<any[]>(() => _s?.inventory || []);
-
-  const [consumables, setConsumables] = useState<any[]>(() => _s?.consumables || []);
-
-  const [messages, setMessages] = useState<Message[]>(() => _s?.messages || [
-    { id: 1, role: 'system', text: '*你在一陣微涼的晨風中醒來，意識像是從深不見底的湖底緩緩浮上水面。陽光穿透層層疊疊的奇異葉片，篩落在臉上，形成斑駁的光點。身下是柔軟而潮濕的苔癬，空氣中瀰漫著泥土、腐葉以及某種不知名野花的清甜香氣，一切都陌生得令人心慌。*\n\n*你記得的最後一件事，是在舒適的床上滑著手機，準備迎接又一個平凡的上班日。而現在，你正躺在一片廣闊無垠的原始森林裡，高聳入雲的巨木有著從未見過的扭曲枝幹，周遭的蕨類植物甚至比人還高。*\n\n*在你還在試圖理解現況時，一個清晰、中性且帶著一絲戲謔的聲音，直接在你腦海中響起。*\n\n🌀引路者：「早安，睡美人。或者我該說……迷途的羔羊？感覺你有很多問題想問，別急，我們有的是時間。首先，恭喜你，你還活著。」\n\n*這聲音聽起來不帶惡意，反而像個個看了太多好戲的無聊房東，終於盼來了有趣的新房客。*' },
-  ]);
-  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
-  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
-  const [editMessageText, setEditMessageText] = useState('');
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [quickOptions, setQuickOptions] = useState<string[]>(() => _s?.quickOptions || ['觀察四周', '檢查自己', '大聲求助']);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Mock World Map Data
-  const [worldMap, setWorldMap] = useState<WorldMap>(() => _s?.worldMap || INITIAL_WORLD_MAP);
-
-  const [mapOrigin, setMapOrigin] = useState<string | null>(null);
-  const [mapDestination, setMapDestination] = useState<string | null>(null);
-
+  // ─── 地圖旅行時間計算 ────────────────────────────────────────────────────────
   const calculateTravelTime = () => {
     if (!mapOrigin || !mapDestination) return null;
     const origin = worldMap.fixed.find(loc => loc.id === mapOrigin);
@@ -429,47 +408,23 @@ ${recentChat}
     ));
   };
 
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  // ─── 消耗品 effect 套用 ──────────────────────────────────────────────────────
-  const applyItemEffect = (itemName: string): boolean => {
-    const item = consumables.find(i => i.name === itemName);
-    if (!item) return false;
-    const effect = item.effect || {};
-    const parts: string[] = [];
-    setProfile(prev => {
-      const next = { ...prev };
-      if (effect.hp) { next.hp = prev.hp + effect.hp; parts.push(`HP ${effect.hp > 0 ? '+' : ''}${effect.hp}`); }
-      if (effect.mp) { next.mp = prev.mp + effect.mp; parts.push(`MP ${effect.mp > 0 ? '+' : ''}${effect.mp}`); }
-      if (effect.gold) { next.gold = prev.gold + effect.gold; parts.push(`Gold ${effect.gold > 0 ? '+' : ''}${effect.gold}`); }
-      if (effect.status) { next.status = effect.status; parts.push(`狀態：${effect.status}`); }
-      return next;
-    });
-    setConsumables(prev =>
-      prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity - 1 } : i)
-         .filter(i => i.quantity > 0)
-    );
-    const effectDesc = parts.length > 0 ? `：${parts.join('、')}` : '';
-    showToast(`🧪 使用 ${itemName}${effectDesc}`);
-    return true;
-  };
-
-  // 每次 AI 回應結束後自動存檔
+  // ─── 每次 AI 回應結束後自動存檔 ─────────────────────────────────────────────
   useEffect(() => {
     if (!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant') {
-      const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
-      localStorage.setItem('rpworld_save', JSON.stringify(saveData));
+      saveToStorage();
       const now = new Date();
       localStorage.setItem('rpworld_last_saved', now.toISOString());
       setLastSavedAt(now);
     }
   }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── 存檔匯出 ────────────────────────────────────────────────────────────────
   const handleExportSave = () => {
-    const saveData = { profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs, inventory, consumables, currentLocation, messages, memories, quickOptions, timeState, quests };
+    const saveData = {
+      profile, systemPrompt, diaryEntries, lorebookEntries, npcs, appearingNpcs,
+      inventory, consumables, currentLocation, messages, memories, quickOptions,
+      timeState, quests, worldMap,
+    };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -487,64 +442,18 @@ ${recentChat}
     showToast('存檔已匯出');
   };
 
+  // ─── 存檔匯入 ────────────────────────────────────────────────────────────────
   const handleImportSave = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const content = e.target?.result as string;
-        const saveData = JSON.parse(content);
-        if (saveData.profile) setProfile(saveData.profile);
-        if (saveData.systemPrompt) setSystemPrompt(saveData.systemPrompt);
-        if (saveData.diaryEntries) setDiaryEntries(saveData.diaryEntries);
-        if (saveData.lorebookEntries) setLorebookEntries(saveData.lorebookEntries);
-        if (saveData.npcs) setNpcs(saveData.npcs);
-        if (saveData.inventory) setInventory(saveData.inventory);
-        if (saveData.consumables) setConsumables(saveData.consumables);
-        if (saveData.currentLocation) setCurrentLocation(saveData.currentLocation);
-        if (saveData.messages) setMessages(saveData.messages);
-        if (saveData.memories) {
-          setMemories(saveData.memories);
-        } else {
-          // ── 舊存檔自動轉換 ──────────────────────────────────────────────
-          const migrated: any[] = [];
-          const now = '（已匯入）';
-          const defaults = {
-            trigger: { scanDepth: 5, probability: 100, sticky: 0, cooldown: 0 },
-            isActive: true, source: 'manual', createdAt: now
-          };
-          (saveData.worldMemory || []).forEach((text: string) => migrated.push({
-            id: `mig_w_${Date.now()}_${Math.random()}`,
-            type: 'world', importance: 'critical', content: text,
-            tags: { locations: [], npcs: [], factions: [], keywords: [] },
-            ...defaults
-          }));
-          (saveData.factionMemory || []).forEach((f: any) => {
-            (f.memories || []).forEach((text: string) => migrated.push({
-              id: `mig_f_${Date.now()}_${Math.random()}`,
-              type: 'world', importance: 'normal', content: `[${f.name}] ${text}`,
-              tags: { locations: [], npcs: [], factions: [f.name], keywords: [] },
-              ...defaults
-            }));
-          });
-          (saveData.locationMemory || []).forEach((loc: any) => {
-            (loc.memories || []).forEach((text: string) => migrated.push({
-              id: `mig_l_${Date.now()}_${Math.random()}`,
-              type: 'scene', importance: 'normal', content: text,
-              tags: { locations: [loc.name], npcs: [], factions: [], keywords: [] },
-              ...defaults
-            }));
-          });
-          if (migrated.length > 0) setMemories(migrated);
-        }
-        if (saveData.quickOptions) setQuickOptions(saveData.quickOptions);
-        if (saveData.timeState) setTimeState(saveData.timeState);
-        if (saveData.quests) setQuests(saveData.quests);
+        loadFromData(JSON.parse(content));
         showToast('存檔已匯入');
         setIsSettingsModalOpen(false);
-      } catch (error) {
+      } catch {
         showToast('存檔格式錯誤');
       }
     };
@@ -552,9 +461,10 @@ ${recentChat}
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // ─── 重置遊戲 ────────────────────────────────────────────────────────────────
   const handleResetGame = () => {
     if (window.confirm('確定要重置遊戲嗎？所有未匯出的進度將會遺失。')) {
-      localStorage.removeItem('rpworld_save');
+      localStorage.removeItem(SAVE_KEY);
       window.location.reload();
     }
   };
@@ -631,515 +541,6 @@ ${recentChat}
     
     setLorebookEntries([newEntry, ...lorebookEntries]);
     showToast(`已將 ${npc.name} 記下並加入設定集`);
-  };
-
-  // ─── 前端 COMMANDS 解析器 ────────────────────────────────────────────────────
-  const parseAndExecuteCommands = (rawText: string): string => {
-    const commandBlockRegex = /<<COMMANDS>>([\s\S]*?)(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi;
-    const optionsBlockRegex = /<<OPTIONS>>([\s\S]*?)(?:<<\/OPTIONS>>|<\/OPTIONS>>|<\/OPTIONS>|$)/gi;
-    let narrative = rawText;
-    let commandsFound = false;
-    let optionsFound = false;
-
-    const allOptions: string[] = [];
-    let optMatch;
-    while ((optMatch = optionsBlockRegex.exec(narrative)) !== null) {
-      optionsFound = true;
-      const lines = optMatch[1]
-        .split('\n')
-        .map(l => l.replace(/^[\d\.\-\*\s]+/, '').trim())
-        .filter(Boolean);
-      allOptions.push(...lines);
-    }
-    if (optionsFound) {
-      narrative = narrative.replace(/<<OPTIONS>>[\s\S]*?(?:<<\/OPTIONS>>|<\/OPTIONS>>|<\/OPTIONS>|$)/gi, '').trim();
-      if (allOptions.length > 0) {
-        setQuickOptions(allOptions);
-      } else {
-        setQuickOptions(['觀察四周', '檢查自己', '大聲求助']);
-      }
-    } else {
-      setQuickOptions(['觀察四周', '檢查自己', '大聲求助']);
-    }
-
-    const allCommands: string[] = [];
-    let match;
-    while ((match = commandBlockRegex.exec(narrative)) !== null) {
-      commandsFound = true;
-      const lines = match[1].split('\n').map(l => l.trim()).filter(Boolean);
-      allCommands.push(...lines);
-    }
-
-    if (commandsFound) {
-      narrative = narrative.replace(/<<COMMANDS>>[\s\S]*?(?:<<\/COMMANDS>>|<\/COMMANDS>>|<\/COMMANDS>|$)/gi, '').trim();
-    }
-
-    if (allCommands.length === 0) return narrative;
-
-    let hpDelta = 0;
-    let mpDelta = 0;
-    let goldDelta = 0;
-    const affinityUpdates: { name: string; delta: number }[] = [];
-    const toastQueue: string[] = [];
-
-    for (const cmd of allCommands) {
-      const hpMatch = cmd.match(/^HP:([+-]\d+)$/i);
-      if (hpMatch) {
-        hpDelta += parseInt(hpMatch[1]);
-        continue;
-      }
-
-      const mpMatch = cmd.match(/^MP:([+-]\d+)$/i);
-      if (mpMatch) {
-        mpDelta += parseInt(mpMatch[1]);
-        continue;
-      }
-
-      const goldMatch = cmd.match(/^GOLD:([+-]\d+)$/i);
-      if (goldMatch) {
-        goldDelta += parseInt(goldMatch[1]);
-        continue;
-      }
-
-      const affinityMatch = cmd.match(/^AFFINITY:(.+):([+-]\d+)$/i);
-      if (affinityMatch) {
-        affinityUpdates.push({ name: affinityMatch[1].trim(), delta: parseInt(affinityMatch[2]) });
-        continue;
-      }
-
-      const locationMatch = cmd.match(/^LOCATION:(.+)$/i);
-      if (locationMatch) {
-        const newLoc = locationMatch[1].trim();
-        setCurrentLocation(newLoc);
-        toastQueue.push(`📍 移動至 ${newLoc}`);
-        continue;
-      }
-
-      const timeMatch = cmd.match(/^TIME:\+(\d+)(h|m)$/i);
-      if (timeMatch) {
-        const amount = parseInt(timeMatch[1]);
-        const unit = timeMatch[2].toLowerCase();
-        const totalMinutes = timeState.hour * 60 + timeState.minute + (unit === 'h' ? amount * 60 : amount);
-        const addedDays = Math.floor(totalMinutes / (24 * 60));
-        const newDay = timeState.day + addedDays;
-        const remainMinutes = totalMinutes % (24 * 60);
-        setTimeState(prev => ({
-          ...prev,
-          hour: Math.floor(remainMinutes / 60),
-          minute: remainMinutes % 60,
-          day: newDay,
-        }));
-        // 自動失敗過期任務
-        if (addedDays > 0) {
-          const newTotalDays = timeState.year * 360 + (timeState.month - 1) * 30 + newDay;
-          const failedTitles: string[] = [];
-          quests.forEach(q => {
-            if (q.status === 'active' && q.deadline != null && q.createdAtTotalDays != null) {
-              if (newTotalDays >= q.createdAtTotalDays + q.deadline) {
-                failedTitles.push(q.title);
-              }
-            }
-          });
-          failedTitles.forEach(title => toastQueue.push(`❌ 任務失敗：${title}`));
-          if (failedTitles.length > 0) {
-            setQuests(prev => prev.map(q =>
-              failedTitles.includes(q.title) && q.status === 'active'
-                ? { ...q, status: 'failed' as const }
-                : q
-            ));
-          }
-        }
-        continue;
-      }
-
-      if (cmd.toUpperCase().startsWith('ITEM_ADD:')) {
-        const rawParts = cmd.slice('ITEM_ADD:'.length).split(':');
-        const itemName = rawParts[0]?.trim() || '';
-        const qty = parseInt(rawParts[1] || '1') || 1;
-        // Separate description segments from effect key=value pairs
-        const EFFECT_KEYS = /^(hp|mp|gold|status)=/i;
-        const descParts: string[] = [];
-        const effectMap: Record<string, string> = {};
-        for (let pi = 2; pi < rawParts.length; pi++) {
-          if (EFFECT_KEYS.test(rawParts[pi])) {
-            const eqIdx = rawParts[pi].indexOf('=');
-            effectMap[rawParts[pi].slice(0, eqIdx).toLowerCase()] = rawParts[pi].slice(eqIdx + 1);
-          } else {
-            descParts.push(rawParts[pi]);
-          }
-        }
-        const desc = descParts.join(':').trim();
-        const hasEffect = Object.keys(effectMap).length > 0;
-        const effect: { hp?: number; mp?: number; gold?: number; status?: string } = {};
-        if (effectMap.hp) effect.hp = parseInt(effectMap.hp);
-        if (effectMap.mp) effect.mp = parseInt(effectMap.mp);
-        if (effectMap.gold) effect.gold = parseInt(effectMap.gold);
-        if (effectMap.status) effect.status = effectMap.status;
-        if (hasEffect) {
-          // Route to consumables
-          setConsumables(prev => {
-            const exists = prev.find(i => i.name === itemName);
-            if (exists) return prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity + qty } : i);
-            return [...prev, { id: Date.now(), name: itemName, quantity: qty, description: desc, effect }];
-          });
-        } else {
-          setInventory(prev => {
-            const exists = prev.find(i => i.name === itemName);
-            if (exists) return prev.map(i => i.name === itemName ? { ...i, quantity: i.quantity + qty } : i);
-            return [...prev, { id: Date.now(), name: itemName, quantity: qty, description: desc }];
-          });
-        }
-        toastQueue.push(`🎒 獲得 ${itemName} x${qty}`);
-        continue;
-      }
-
-      const itemRemoveMatch = cmd.match(/^ITEM_REMOVE:(.+):(\d+)$/i);
-      if (itemRemoveMatch) {
-        const [, name, qty] = itemRemoveMatch;
-        setInventory(prev =>
-          prev.map(i => i.name === name.trim() ? { ...i, quantity: i.quantity - parseInt(qty) } : i)
-             .filter(i => i.quantity > 0)
-        );
-        continue;
-      }
-
-      const itemUseMatch = cmd.match(/^ITEM_USE:(.+)$/i);
-      if (itemUseMatch) {
-        applyItemEffect(itemUseMatch[1].trim());
-        continue;
-      }
-
-      const memAddMatch = cmd.match(/^MEMORY_ADD:(world|region|scene|npc):(.+)$/i);
-      if (memAddMatch) {
-        const [, rawType, rest] = memAddMatch;
-        const parts = rest.split(':');
-
-        const importancePat = /^(critical|normal|flavor)$/i;
-        let importance = 'normal';
-        let contentStart = 0;
-        if (importancePat.test(parts[0])) {
-          importance = parts[0].toLowerCase();
-          contentStart = 1;
-        }
-
-        let optStart = parts.findIndex((p, i) => i > contentStart && p.includes('='));
-        if (optStart === -1) optStart = parts.length;
-
-        const contentStr = parts.slice(contentStart, optStart).join(':').trim();
-        const optParts = parts.slice(optStart);
-
-        const getOpt = (key: string) => {
-          const found = optParts.find(p => p.toLowerCase().startsWith(key + '='));
-          return found ? found.split('=')[1] : '';
-        };
-
-        const locations  = getOpt('locations') || getOpt('location')
-          ? (getOpt('locations') || getOpt('location')).split(',').map(s => s.trim()).filter(Boolean)
-          : (rawType === 'scene' || rawType === 'region') ? [currentLocation] : [];
-        const npcs       = getOpt('npcs') || getOpt('npc')
-          ? (getOpt('npcs') || getOpt('npc')).split(',').map(s => s.trim()).filter(Boolean)
-          : [];
-        const factions   = getOpt('factions') || getOpt('faction')
-          ? (getOpt('factions') || getOpt('faction')).split(',').map(s => s.trim()).filter(Boolean)
-          : [];
-        const keywords   = getOpt('keywords') || getOpt('keyword')
-          ? (getOpt('keywords') || getOpt('keyword')).split(',').map(s => s.trim()).filter(Boolean)
-          : [];
-        const sticky     = parseInt(getOpt('sticky') || '0');
-        const expires    = getOpt('expires') || undefined;
-
-        const finalLocations = locations.length > 0 ? locations
-          : (rawType === 'scene' || rawType === 'region') ? [currentLocation] : [];
-
-        const newMem = {
-          id: `mem_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-          type: rawType.toLowerCase(),
-          importance,
-          content: contentStr,
-          tags: { locations: finalLocations, npcs, factions, keywords },
-          trigger: { scanDepth: 5, probability: 100, sticky, cooldown: 0 },
-          isActive: true,
-          source: 'ai_generated',
-          createdAt: `帝國曆 ${timeState.year}年${timeState.month}月${timeState.day}日`,
-          ...(expires ? { expiresAt: expires } : {}),
-        };
-
-        setMemories(prev => [...prev, newMem]);
-        toastQueue.push(`📝 新增${rawType === 'world' ? '世界' : rawType === 'region' ? '區域' : rawType === 'scene' ? '場景' : 'NPC'}記憶`);
-        continue;
-      }
-
-      if (cmd.toUpperCase().startsWith('QUEST_ADD:')) {
-        const parts = cmd.slice('QUEST_ADD:'.length).split(':');
-        const title = parts[0]?.trim() || '';
-        const giver = parts[1]?.trim() || '';
-        const description = parts[2]?.trim() || '';
-        const rewardGold = parseInt(parts[3] || '') || 0;
-        const rewardItemsStr = parts[4]?.trim() || '';
-        const deadlineDays = parseInt(parts[5] || '') || undefined;
-        const rewardItems = rewardItemsStr ? rewardItemsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
-        if (title) {
-          const createdAtTotalDays = timeState.year * 360 + (timeState.month - 1) * 30 + timeState.day;
-          setQuests(prev => {
-            if (prev.some(q => q.title === title)) return prev;
-            return [...prev, {
-              id: `quest_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-              title,
-              giver,
-              description,
-              reward: {
-                ...(rewardGold > 0 ? { gold: rewardGold } : {}),
-                ...(rewardItems.length > 0 ? { items: rewardItems } : {}),
-              },
-              ...(deadlineDays ? { deadline: deadlineDays } : {}),
-              status: 'active' as const,
-              createdAt: `${timeState.month}/${timeState.day}`,
-              createdAtTotalDays,
-            }];
-          });
-          toastQueue.push(`📋 新任務：${title}`);
-          setIsQuestModalOpen(true);
-        }
-        continue;
-      }
-
-      const questCompleteMatch = cmd.match(/^QUEST_COMPLETE:(.+)$/i);
-      if (questCompleteMatch) {
-        const titleTrimmed = questCompleteMatch[1].trim();
-        const quest = quests.find(q => q.title === titleTrimmed && q.status === 'active');
-        if (quest) {
-          if (quest.reward?.gold) goldDelta += quest.reward.gold;
-          if (quest.reward?.items?.length) {
-            quest.reward.items.forEach(item => {
-              setInventory(prev => {
-                const exists = prev.find(i => i.name === item);
-                if (exists) return prev.map(i => i.name === item ? { ...i, quantity: i.quantity + 1 } : i);
-                return [...prev, { id: Date.now() + Math.floor(Math.random() * 999), name: item, quantity: 1, description: '' }];
-              });
-            });
-          }
-          const rewardStr = quest.reward?.gold ? `，獲得 ${quest.reward.gold} 銅` : '';
-          toastQueue.push(`✅ 任務完成：${titleTrimmed}${rewardStr}`);
-          setQuests(prev => prev.map(q =>
-            q.title === titleTrimmed && q.status === 'active'
-              ? { ...q, status: 'completed' as const, completedAt: `${timeState.month}/${timeState.day}` }
-              : q
-          ));
-        }
-        continue;
-      }
-
-      const npcThoughtMatch = cmd.match(/^NPC_THOUGHT:(.+):(.+)$/i);
-      if (npcThoughtMatch) {
-        const [, name, text] = npcThoughtMatch;
-        setNpcs(prev => prev.map(npc => {
-          if (npc.name.includes(name.trim()) || name.trim().includes(npc.name)) {
-            const newThought = {
-              text: text.trim(),
-              createdAt: `${timeState.month}/${timeState.day}`
-            };
-            const currentThoughts = npc.thoughts || [];
-            return {
-              ...npc,
-              thoughts: [newThought, ...currentThoughts].slice(0, 5)
-            };
-          }
-          return npc;
-        }));
-        continue;
-      }
-
-      const npcRelationMatch = cmd.match(/^NPC_RELATIONSHIP:(.+):(.+)$/i);
-      if (npcRelationMatch) {
-        const [, name, relation] = npcRelationMatch;
-        setNpcs(prev => prev.map(npc =>
-          (npc.name.includes(name.trim()) || name.trim().includes(npc.name))
-            ? { ...npc, relationship: relation.trim() }
-            : npc
-        ));
-        continue;
-      }
-
-      // NPC_NEW:姓名:種族:職業:外貌:個性
-      const npcNewMatch = cmd.match(/^NPC_NEW:([^:]+):([^:]+):([^:]+):([^:]+):(.+)$/i);
-      if (npcNewMatch) {
-        const [, npcName, race, job, appearance, personality] = npcNewMatch.map(s => s?.trim());
-        const newId = Date.now();
-        setLorebookEntries(prev => {
-          if (prev.some(e => e.title === npcName && e.category === 'NPC')) return prev;
-          return [...prev, {
-            id: newId, title: npcName, content: '', category: 'NPC', isActive: true,
-            job, appearance, personality, other: race,
-            keywords: [npcName], selective: false, secondaryKeys: [], insertionOrder: 100,
-            homeLocation: '', roamLocations: []
-          }];
-        });
-        setNpcs(prev => {
-          if (prev.some(n => n.name === npcName)) return prev;
-          return [...prev, {
-            id: newId + 1, name: npcName, job, affection: 0, affectionLabel: '陌生人',
-            appearance, personality, other: race,
-            isPinned: false, memories: [], thoughts: []
-          }];
-        });
-        showToast(`📝 新增 NPC：${npcName}`);
-        continue;
-      }
-
-      // NPC_HOME:姓名:地點
-      const npcHomeMatch = cmd.match(/^NPC_HOME:([^:]+):(.+)$/i);
-      if (npcHomeMatch) {
-        const [, name, location] = npcHomeMatch.map(s => s.trim());
-        setLorebookEntries(prev => prev.map(e =>
-          (e.category === 'NPC' && (e.title.includes(name) || name.includes(e.title)) && !e.homeLocation)
-            ? { ...e, homeLocation: location }
-            : e
-        ));
-        continue;
-      }
-
-      // NPC_LOCATION:姓名:地點
-      const npcLocationMatch = cmd.match(/^NPC_LOCATION:([^:]+):(.+)$/i);
-      if (npcLocationMatch) {
-        const [, name, location] = npcLocationMatch.map(s => s.trim());
-        setLorebookEntries(prev => prev.map(e => {
-          if (!(e.category === 'NPC' && (e.title.includes(name) || name.includes(e.title)))) return e;
-          if (e.homeLocation === location) return e;
-          const roam = [location, ...(e.roamLocations || []).filter(l => l !== location)].slice(0, 3);
-          return { ...e, roamLocations: roam };
-        }));
-        continue;
-      }
-
-      const locDiscoverMatch = cmd.match(/^LOCATION_DISCOVER:(.+)$/i);
-      if (locDiscoverMatch) {
-        const locName = locDiscoverMatch[1].trim();
-        setWorldMap(prev => {
-          // Try to match an existing fixed location
-          const fixedIdx = prev.fixed.findIndex(l =>
-            l.name.includes(locName) || locName.includes(l.name)
-          );
-          if (fixedIdx !== -1) {
-            const updated = [...prev.fixed];
-            updated[fixedIdx] = { ...updated[fixedIdx], discovered: true };
-            return { ...prev, fixed: updated };
-          }
-          // Otherwise add to dynamic as undiscovered
-          const alreadyExists = prev.dynamic.some(d => d.name === locName);
-          if (alreadyExists) return prev;
-          return {
-            ...prev,
-            dynamic: [...prev.dynamic, {
-              id: `disc_${Date.now()}`,
-              name: locName,
-              desc: '旅途中發現的神秘地點，尚待探索。',
-              location: currentLocation,
-              isPinned: false,
-              discovered: false,
-            }],
-          };
-        });
-        toastQueue.push(`🗺️ 發現新地點：${locName}`);
-        continue;
-      }
-    }
-
-    if (hpDelta !== 0 || mpDelta !== 0 || goldDelta !== 0) {
-      setProfile(prev => {
-        const newHp = Math.max(0, prev.hp + hpDelta);
-        const newMp = Math.max(0, prev.mp + mpDelta);
-        const newGold = Math.max(0, prev.gold + goldDelta);
-
-        if (hpDelta !== 0) toastQueue.push(hpDelta > 0 ? `❤️ HP +${hpDelta}` : `💔 HP ${hpDelta}`);
-        if (mpDelta !== 0) toastQueue.push(mpDelta > 0 ? `💙 MP +${mpDelta}` : `💙 MP ${mpDelta}`);
-        if (goldDelta !== 0) toastQueue.push(goldDelta > 0 ? `🪙 +${goldDelta} G` : `🪙 ${goldDelta} G`);
-
-        if (newHp === 0) toastQueue.push('💀 HP 歸零！');
-
-        return { ...prev, hp: newHp, mp: newMp, gold: newGold };
-      });
-    }
-
-    if (affinityUpdates.length > 0) {
-      setNpcs(prev => prev.map(npc => {
-        const update = affinityUpdates.find(u =>
-          npc.name.includes(u.name) || u.name.includes(npc.name)
-        );
-        if (!update) return npc;
-        const newAffinity = Math.max(-100, Math.min(100, npc.affection + update.delta));
-        toastQueue.push(`${update.delta > 0 ? '💛' : '🖤'} ${npc.name} 好感度 ${update.delta > 0 ? '+' : ''}${update.delta}`);
-        return { ...npc, affection: newAffinity };
-      }));
-    }
-
-    toastQueue.forEach((msg, i) => {
-      setTimeout(() => showToast(msg), i * 600);
-    });
-
-    return narrative;
-  };
-
-  // ─── 關鍵字掃描 ──────────────────────────────────────────────────────────────
-  const scanKeywords = (keywords: string[], scanDepth = 5, extraText = ''): boolean => {
-    if (!keywords || keywords.length === 0) return true;
-    const recentTexts = messages
-      .slice(-scanDepth)
-      .map(m => m.text.toLowerCase())
-      .join(' ') + ' ' + extraText.toLowerCase();
-    return keywords.some(kw => recentTexts.includes(kw.toLowerCase()));
-  };
-
-  // ─── 記憶觸發判斷 ────────────────────────────────────────────────────────────
-  const isMemoryTriggered = (mem: any, userInput = ''): boolean => {
-    if (!mem.isActive) return false;
-    if ((cooldownCounters[mem.id] || 0) > 0) return false;
-    if ((stickyCounters[mem.id] || 0) > 0) return true;
-
-    const prob = mem.trigger?.probability ?? 100;
-    if (prob < 100 && Math.random() * 100 > prob) return false;
-
-    const allKeywords = [
-      ...(mem.tags?.locations || []),
-      ...(mem.tags?.npcs || []),
-      ...(mem.tags?.factions || []),
-      ...(mem.tags?.keywords || []),
-    ];
-    const depth = mem.trigger?.scanDepth ?? 5;
-    return scanKeywords(allKeywords, depth, userInput);
-  };
-
-  // ─── 每次 AI 回應後更新 sticky/cooldown 計數器 ────────────────────────────
-  const tickMemoryCounters = (triggeredIds: string[]) => {
-    setStickyCounters(prev => {
-      const next = { ...prev };
-      triggeredIds.forEach(id => {
-        const mem = memories.find(m => m.id === id);
-        const sticky = mem?.trigger?.sticky ?? 0;
-        if (sticky > 0) next[id] = sticky;
-      });
-      Object.keys(next).forEach(id => {
-        if (!triggeredIds.includes(id) && next[id] > 0) {
-          next[id] -= 1;
-          if (next[id] === 0) {
-            const mem = memories.find(m => m.id === id);
-            const cd = mem?.trigger?.cooldown ?? 0;
-            if (cd > 0) {
-              setCooldownCounters(c => ({ ...c, [id]: cd }));
-            }
-            delete next[id];
-          }
-        }
-      });
-      return next;
-    });
-    setCooldownCounters(prev => {
-      const next = { ...prev };
-      Object.keys(next).forEach(id => {
-        if (next[id] > 0) next[id] -= 1;
-        if (next[id] === 0) delete next[id];
-      });
-      return next;
-    });
   };
 
   // ─── Prompt 組裝 ─────────────────────────────────────────────────────────────
