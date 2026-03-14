@@ -46,6 +46,86 @@
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
 
+- [ ] **世界地圖重寫（深藍金風格 + 旅行系統）**
+
+  **視覺設計語彙**（深海藍 × 金色手稿風）：
+  - 整體底色：`#0a1628`（深海藍）
+  - 強調色：`#c9a84c`（金色）——節點星芒、標題上邊線、分隔菱形、啟程按鈕
+  - 次要文字色：`#8ab4e8`（淡藍）——地點描述、區域記憶、已知節點標籤
+  - 目標節點色：`#cc2200`（深紅）——選中目標地點
+  - 容器背景：`#0d1f3c`，邊框 `0.5px solid #2a4a7f`，頂邊 `1.5px solid #c9a84c`
+  - 字體：`Georgia, serif`（全站）
+  - 紙張紋理：細格線疊加層（`rgba(100,140,200,0.03)`）
+  - 暗角：`radial-gradient` 邊緣加深至 `rgba(5,12,28,0.7)`
+  - 四角 L 型裝飾線：金色 `#c9a84c`，`stroke-width: 1.2`
+
+  **地點狀態邏輯**（兩狀態）：
+  - `discovered`（預設）：虛線圓圈，`stroke: #5a8fc9`，`opacity: 0.35`，標籤顯示「???」
+  - `known`：八角星芒節點，藍色星芒 `#4a7ac9`，中心亮點 `#8ab4e8`
+  - 玩家所在地（`currentLocation`）：金色八角星芒 `#c9a84c`，三層暈光，中心 `#fde68a`
+  - 選中目標：深紅八角星芒 `#cc4422`，三層暈光，中心 `#ff8866`
+
+  **節點連線邏輯**：
+  - 平時不顯示任何連線
+  - 玩家點選第一個節點後再點選第二個節點，出現金色虛線 bezier 曲線（`stroke: #c9a84c`，`stroke-dasharray: 5 3`）
+  - 取消選取或關閉 Modal 時曲線消失
+
+  **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
+  - `mapX: number`、`mapY: number`：節點座標，手動設定
+  - `cartFare: number`：馬車車費（銅幣），`0` 表示不可搭馬車
+  - `mapStatus: 'discovered' | 'known'`：預設 `'discovered'`
+  - 玩家抵達後前端自動改為 `'known'`
+
+  **地圖 UI 重寫**（`src/components/MapModal.tsx`）：
+  - SVG canvas，背景 `#0a1628`，細格線 + 暗角疊加
+  - 四角金色 L 型裝飾線（純裝飾，無互動）
+  - 節點一律用八角星芒圖形（`<polygon>`），依狀態套用對應顏色
+  - 地圖開啟時自動以玩家所在節點為視覺中心
+
+  **右欄資訊面板**（點選節點後顯示）：
+  - 標題列：`✦ 【地點名稱】` + 狀態標籤（目標 / 當前位置）
+  - 菱形分隔線
+  - 地點描述（`content` 欄位）
+  - 區域記憶區塊：`✦ 區域記憶` 標題 + 金色左邊線條列記憶碎片
+    （篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱）
+  - 行動按鈕（玩家不在該地點時才顯示）：
+    - 「🚶 徒步前往」（藍色邊框）
+    - 「🐴 馬車 XXG」（金色邊框，`cartFare > 0` 時才顯示）
+  - 啟程按鈕：金底深藍字，全寬
+
+  **坐馬車邏輯**：
+```
+  點擊「啟程」（馬車模式）
+  → 判定 profile.gold >= cartFare
+    → 足夠：前端扣除金幣，更新 currentLocation，mapStatus 改為 'known'
+             送出訊息「你決定搭馬車前往[地點]。」，AI 安排情節
+    → 不足：按鈕下方顯示「阮囊羞澀」提示，不執行任何動作
+```
+
+  **徒步邏輯**：
+```
+  點擊「啟程」（徒步模式）
+  → 更新 currentLocation，mapStatus 改為 'known'
+  → 送出訊息「你決定徒步前往[地點]。」
+  → AI 接手安排旅途事件
+```
+
+  **羅盤**（左下角，純裝飾 + 功能）：
+  - 深藍底 `#0a1628` + 金色 `#c9a84c` 八角星芒
+  - 指北針為金色，其餘方向藍色
+  - hover 降低透明度，點擊重置地圖視角並顯示「視角已重置」Toast
+
+  **搜尋欄**：
+  - 深藍底，底邊 `1.5px solid #c9a84c`，佔位文字「搜尋地點...」
+  - 即時篩選右欄地點列表（非篩選地圖節點）
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - `LOCATION_DISCOVER:地點名`：將對應 lorebookEntry 的 `mapStatus` 改為 `'known'`；若不存在則新增一筆 `mapStatus='discovered'` 的條目
+  - Toast：「🗺️ 發現新地點：XX」
+
+  **buildPrompt COMMAND FORMAT 說明補充**：
+  - `LOCATION_DISCOVER`：玩家在旅途中路過、聽說或間接發現尚未踏足的地點時輸出
+
 ---
 
 ## 🟡 中優先
