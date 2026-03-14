@@ -15,6 +15,7 @@ export interface CommandParserDeps {
   stickyCounters: Record<string, number>;
   cooldownCounters: Record<string, number>;
   messages: Message[];
+  lorebookEntries: LorebookEntry[];
   // 寫入
   setTimeState: React.Dispatch<React.SetStateAction<TimeState>>;
   setProfile: React.Dispatch<React.SetStateAction<Profile>>;
@@ -38,7 +39,7 @@ export interface CommandParserDeps {
 export function useCommandParser(deps: CommandParserDeps) {
   const {
     timeState, currentLocation, quests, memories, consumables,
-    stickyCounters, cooldownCounters, messages,
+    stickyCounters, cooldownCounters, messages, lorebookEntries,
     setTimeState, setProfile, setCurrentLocation, setQuests,
     setMemories, setInventory, setConsumables, setNpcs,
     setLorebookEntries, setWorldMap, setQuickOptions,
@@ -508,29 +509,29 @@ export function useCommandParser(deps: CommandParserDeps) {
       const locDiscoverMatch = cmd.match(/^LOCATION_DISCOVER:(.+)$/i);
       if (locDiscoverMatch) {
         const locName = locDiscoverMatch[1].trim();
-        setWorldMap(prev => {
-          const fixedIdx = prev.fixed.findIndex(l =>
-            l.name.includes(locName) || locName.includes(l.name)
-          );
-          if (fixedIdx !== -1) {
-            const updated = [...prev.fixed];
-            updated[fixedIdx] = { ...updated[fixedIdx], discovered: true };
-            return { ...prev, fixed: updated };
-          }
-          const alreadyExists = prev.dynamic.some(d => d.name === locName);
-          if (alreadyExists) return prev;
-          return {
-            ...prev,
-            dynamic: [...prev.dynamic, {
-              id: `disc_${Date.now()}`,
-              name: locName,
-              desc: '旅途中發現的神秘地點，尚待探索。',
-              location: currentLocation,
-              isPinned: false,
-              discovered: false,
-            }],
-          };
-        });
+        const existing = lorebookEntries.find(e =>
+          e.category === '地點' && (e.title.includes(locName) || locName.includes(e.title))
+        );
+        if (existing) {
+          setLorebookEntries(prev => prev.map(e =>
+            e.category === '地點' && (e.title.includes(locName) || locName.includes(e.title))
+              ? { ...e, mapStatus: 'known' as const }
+              : e
+          ));
+        } else {
+          setLorebookEntries(prev => [...prev, {
+            id: Date.now(),
+            title: locName,
+            content: '旅途中發現的神秘地點，尚待探索。',
+            category: '地點',
+            isActive: true,
+            mapStatus: 'discovered' as const,
+            keywords: [locName],
+            selective: false,
+            secondaryKeys: [],
+            insertionOrder: 100,
+          }]);
+        }
         toastQueue.push(`🗺️ 發現新地點：${locName}`);
         continue;
       }

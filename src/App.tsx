@@ -105,8 +105,6 @@ export default function App() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mapOrigin, setMapOrigin] = useState<string | null>(null);
-  const [mapDestination, setMapDestination] = useState<string | null>(null);
 
   // ─── API 設定（不屬於遊戲存檔，獨立存於 localStorage）───────────────────────
   const [geminiApiKey, setGeminiApiKey] = useState<string>(
@@ -192,7 +190,7 @@ export default function App() {
   const { parseAndExecuteCommands, applyItemEffect, scanKeywords, isMemoryTriggered, tickMemoryCounters } =
     useCommandParser({
       timeState, currentLocation, quests, memories, consumables,
-      stickyCounters, cooldownCounters, messages,
+      stickyCounters, cooldownCounters, messages, lorebookEntries,
       setTimeState, setProfile, setCurrentLocation, setQuests,
       setMemories, setInventory, setConsumables, setNpcs,
       setLorebookEntries, setWorldMap, setQuickOptions,
@@ -201,28 +199,31 @@ export default function App() {
       onNewQuest: () => setIsQuestModalOpen(true),
     });
 
-  // ─── 地圖旅行時間計算 ────────────────────────────────────────────────────────
-  const calculateTravelTime = () => {
-    if (!mapOrigin || !mapDestination) return null;
-    const origin = worldMap.fixed.find(loc => loc.id === mapOrigin);
-    const dest = worldMap.fixed.find(loc => loc.id === mapDestination);
-    if (!origin || !dest) return null;
-    
-    const distance = Math.sqrt(Math.pow(dest.x - origin.x, 2) + Math.pow(dest.y - origin.y, 2));
-    
-    const walkMinutes = Math.round(distance * 15);
-    const walkHours = Math.floor(walkMinutes / 60);
-    const walkMins = walkMinutes % 60;
-    
-    const carriageMinutes = Math.round(distance * 5);
-    const carriageHours = Math.floor(carriageMinutes / 60);
-    const carriageMins = carriageMinutes % 60;
-    
-    return {
-      distance: Math.round(distance),
-      walkTimeStr: walkHours > 0 ? `${walkHours} 小時 ${walkMins} 分鐘` : `${walkMins} 分鐘`,
-      carriageTimeStr: carriageHours > 0 ? `${carriageHours} 小時 ${carriageMins} 分鐘` : `${carriageMins} 分鐘`
-    };
+  // ─── 地圖旅行 ────────────────────────────────────────────────────────────────
+  const handleTravel = (destName: string, byCarriage: boolean) => {
+    // Deduct carriage fare if applicable
+    if (byCarriage) {
+      const destEntry = lorebookEntries.find(e => e.category === '地點' && e.title === destName);
+      const fare = destEntry?.cartFare ?? 0;
+      if (fare > 0) {
+        setProfile(prev => ({ ...prev, gold: prev.gold - fare }));
+        showToast(`🐴 支付馬車費 ${fare} 銅`);
+      }
+    }
+    // Update location
+    setCurrentLocation(destName);
+    // Mark destination as 'known' in lorebookEntries
+    setLorebookEntries(prev => prev.map(e =>
+      e.category === '地點' && e.title === destName
+        ? { ...e, mapStatus: 'known' as const }
+        : e
+    ));
+    // Send message to AI
+    const msg = byCarriage
+      ? `你決定搭馬車前往${destName}。`
+      : `你決定徒步前往${destName}。`;
+    setIsMapOpen(false);
+    handleSendMessage(msg);
   };
 
   useEffect(() => {
@@ -1556,13 +1557,11 @@ Please respond as the DM.`;
       <MapModal
         isOpen={isMapOpen}
         onClose={() => setIsMapOpen(false)}
-        worldMap={worldMap}
-        setWorldMap={setWorldMap}
-        mapOrigin={mapOrigin}
-        setMapOrigin={setMapOrigin}
-        mapDestination={mapDestination}
-        setMapDestination={setMapDestination}
-        calculateTravelTime={calculateTravelTime}
+        lorebookEntries={lorebookEntries}
+        currentLocation={currentLocation}
+        profile={profile}
+        memories={memories}
+        onTravel={handleTravel}
       />
 
       {/* Toast Notification */}

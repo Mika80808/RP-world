@@ -5,7 +5,33 @@
 
 ---
 
-## [2026-03-14] v11（當前版本）
+## [2026-03-14] v12（當前版本）
+
+### 世界地圖完整重寫：lorebookEntries 資料源 + 旅行系統
+
+將地圖架構從獨立 WorldMap state 遷移至 lorebookEntries，並實作坐馬車/徒步旅行邏輯。
+
+- **`src/types.ts`**：`LorebookEntry` 新增 5 個可選欄位：`mapX`, `mapY`, `cartFare`, `mapStatus?: 'discovered' | 'known'`, `adjacentTo`。
+- **`src/constants.ts`**：`INITIAL_LOREBOOK_ENTRIES` 所有 15 個 `category='地點'` 條目補上座標（沿用 INITIAL_WORLD_MAP 數值）、cartFare（依地點危險度設定 0–80 銅）、mapStatus（月湖鎮/異鄉人公寓 `'known'`，其餘 `'discovered'`）。
+- **`src/hooks/useCommandParser.ts`**：
+  - `CommandParserDeps` 新增 `lorebookEntries: LorebookEntry[]`
+  - `LOCATION_DISCOVER` 完整重寫：已在 lorebook 的地點 → 改 `mapStatus='known'`；未知地點 → 新增 lorebook entry（`mapStatus='discovered'`，無座標）。移除對 `setWorldMap` 的依賴。
+- **`src/components/MapModal.tsx`（完整重寫）**：
+  - 資料來源從 `WorldMap` 改為 `lorebookEntries`（category='地點' AND mapX 已設）
+  - 節點統一使用圓形，依狀態視覺區分：玩家所在（綠色微發光）/ 已知（石板灰）/ 未踏足（半透明+問號）
+  - 點選節點 → 右欄顯示地點名稱、content 說明、區域記憶、旅行按鈕
+  - 旅行按鈕：🐴 坐馬車（cartFare > 0 才顯示，金不夠顯示「阮囊羞澀」）/ 🚶 徒步前往
+  - 選擇不同節點時顯示 cubic bezier 曲線連接玩家所在地與目標
+  - 無座標地點（LOCATION_DISCOVER 新增）顯示於「旅途發現」列表
+- **`src/App.tsx`**：
+  - 新增 `handleTravel(destName, byCarriage)`：扣除馬車費、更新 currentLocation、將目的地標記 `mapStatus='known'`、關閉地圖、送訊息給 AI
+  - `useCommandParser` 增加 `lorebookEntries` 傳入
+  - 移除 `mapOrigin`、`mapDestination` state 及 `calculateTravelTime` 函數
+  - MapModal 改用新 props（lorebookEntries / currentLocation / profile / memories / onTravel）
+
+---
+
+## [2026-03-14] v11
 
 ### 任務系統規格升級：兩階段完成流程 + QUEST_GOAL_MET
 

@@ -108,7 +108,8 @@
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
 
-- [ ] **世界地圖重寫（狀態邏輯 + 旅行系統）**
+- [x] **世界地圖重寫（狀態邏輯 + 旅行系統）**
+  2026-03-14 [Claude]: `types.ts` LorebookEntry 新增 mapX/mapY/cartFare/mapStatus/adjacentTo 五個可選欄位；`constants.ts` INITIAL_LOREBOOK_ENTRIES 所有 15 個地點補上座標與車資；`useCommandParser` LOCATION_DISCOVER 改操作 lorebookEntries.mapStatus；`MapModal.tsx` 完整重寫（lorebookEntries 作資料來源、全圓形節點、bezier 曲線、右欄地點資訊+區域記憶+旅行按鈕、坐馬車/徒步邏輯）；`App.tsx` 移除舊 calculateTravelTime/mapOrigin/mapDestination，新增 handleTravel handler。TypeScript 零錯誤。
 
   **地點狀態邏輯**（兩狀態，移除原本的 visited）：
   - `discovered`（預設）：半透明 + 問號 icon，尚未造訪

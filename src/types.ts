@@ -73,6 +73,11 @@ export interface LorebookEntry {
   insertionOrder?: number;
   homeLocation?: string;
   roamLocations?: string[];
+  mapX?: number;
+  mapY?: number;
+  cartFare?: number;
+  mapStatus?: 'discovered' | 'known';
+  adjacentTo?: string[];
 }
 
 export interface SystemPrompt {
