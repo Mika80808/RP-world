@@ -7,6 +7,21 @@
 
 ## [2026-03-13] v8（當前版本）
 
+### NPC 出沒系統 + 兩階段注入
+讓 NPC 根據劇情自然累積出沒地點，前端依地點篩選候選名單，AI 決定誰真正出場，避免 NPC 無限膨脹也保留生活感。
+- **資料結構**：LorebookEntry 新增 `homeLocation`（主場地點）與 `roamLocations`（滑動窗口，保留最近 3 個非主場地點）。
+- **指令**：新增 `NPC_NEW`（建立新 NPC lorebookEntry）、`NPC_HOME`（首次登場寫入主場，唯寫一次）、`NPC_LOCATION`（記錄巡遊地點）。
+- **第一階段注入**：進入地點時，篩選 homeLocation 或 roamLocations 符合的 NPC（最多 5 個），以輕量格式（名字＋職業）注入 Prompt 候選名單。
+- **第二階段注入**：AI 在對話內文輸出 `[出場:姓名]` 標記後，前端偵測並注入完整 NPC 資料（外貌、個性、thoughts），同時觸發上次見面地點與日期自動更新，並從顯示文字移除標記。
+- **UI**：LorebookModal 新增 homeLocation / roamLocations 欄位顯示與編輯。
+
+### 道具 effect 前端處理
+消耗品新增 `effect` 欄位（hp / mp / gold / status），由 AI 透過 `ITEM_ADD` 建立時一併寫入，前端直接套用，不需 AI 介入計算。
+- **函數**：新增 `applyItemEffect(itemName)` 共用函數，處理兩種觸發方式（按鈕 / AI 指令）。
+- **指令**：新增 `ITEM_USE:道具名`，AI 判斷玩家在對話中使用消耗品時輸出，`parseAndExecuteCommands` 呼叫 `applyItemEffect`。
+- **UI**：道具欄「使用」按鈕直接呼叫 `applyItemEffect`，同時送出訊息讓 AI 接續描述場景。
+- **Toast**：依實際 effect 內容動態產生，例如「🧪 草藥：HP +30」。
+
 ### 新增 NPC「角色想法」功能
 實作 NPC 內心想法系統，讓 AI 在後續對話中能維持該 NPC 的態度與立場。
 - **資料結構**：新增 `relationship`、`lastSeenLocation`、`lastSeenDate` 與 `thoughts` 欄位。

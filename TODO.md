@@ -18,7 +18,7 @@
 
 ## 🔴 高優先
 
-- [ ] **任務系統規格升級**
+- [x] **任務系統規格升級**
 
   **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。
 
@@ -72,8 +72,9 @@
   - 進行中：綠色邊框，右上角顯示剩餘天數或「無期限」
   - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
   - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
+  2026-03-13 Claude: 完整實作 quests state；parseAndExecuteCommands 新增 QUEST_ADD/QUEST_COMPLETE 解析；TIME_ADVANCE 後掃描 deadline 自動標記 failed；QUEST_COMPLETE 自動發放金幣與道具獎勵；buildPrompt 注入進行中任務清單；QuestModal 三狀態計數卡片 UI。
 
-- [ ] **道具 effect 前端處理**
+- [x] **道具 effect 前端處理**
 
   **功能意義**：消耗品使用後由前端直接套用數值變化，不需要 AI 介入計算，減少 token 消耗並確保數值即時更新。
 
@@ -100,6 +101,7 @@
 
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
+  2026-03-13 Claude: Consumable 介面新增 effect 欄位（hp/mp/gold/status）；新增 applyItemEffect() 共用函數；parseAndExecuteCommands 解析 ITEM_USE 指令；道具欄「使用」按鈕呼叫 applyItemEffect；buildPrompt 補充 ITEM_USE 說明；Toast 依 effect 動態顯示。
 
 ---
 
