@@ -46,23 +46,6 @@
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
 
-
-
-  **徒步邏輯**：
-  ```
-  點擊「徒步前往」
-  → 更新 currentLocation
-  → 送出訊息「你決定徒步前往[地點]。」
-  → AI 接手安排旅途事件
-  ```
-
-  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
-  - `LOCATION_DISCOVER:地點名`：將對應地點的 `mapStatus` 改為 `'known'`（若已在 lorebookEntries 中），或新增一筆 `mapStatus='discovered'` 的條目
-  - Toast：「🗺️ 發現新地點：XX」
-
-  **buildPrompt COMMAND FORMAT 說明補充**：
-  - `LOCATION_DISCOVER`：當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點時輸出
-
 ---
 
 ## 🟡 中優先
@@ -300,3 +283,17 @@
     → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你決定搭馬車前往[地點]。」，讓 AI 根據兩地情境自行安排情節
     → 不足：按鈕下方顯示小字「阮囊羞澀」，不執行任何動作
   ```
+  **徒步邏輯**：
+  ```
+  點擊「徒步前往」
+  → 更新 currentLocation
+  → 送出訊息「你決定徒步前往[地點]。」
+  → AI 接手安排旅途事件
+  ```
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - `LOCATION_DISCOVER:地點名`：將對應地點的 `mapStatus` 改為 `'known'`（若已在 lorebookEntries 中），或新增一筆 `mapStatus='discovered'` 的條目
+  - Toast：「🗺️ 發現新地點：XX」
+
+  **buildPrompt COMMAND FORMAT 說明補充**：
+  - `LOCATION_DISCOVER`：當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點時輸出
