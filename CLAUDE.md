@@ -8,8 +8,16 @@
 ## ⚡ 每次執行任務的強制流程
 
 ### 開始前（必做）
-1. 讀取 `TODO.md` — 確認當前優先任務與規格細節
-2. 讀取 `CHANGELOG.md` — 了解最新版本狀態，避免重複或衝突
+1. **從 GitHub 拉取最新檔案**，確保不使用舊版本：
+   ```bash
+   git pull origin main
+   ```
+   若有衝突，以 GitHub 上的版本為準：
+   ```bash
+   git checkout origin/main -- TODO.md CHANGELOG.md CLAUDE.md
+   ```
+2. 讀取 `TODO.md` — 確認當前優先任務與規格細節
+3. 讀取 `CHANGELOG.md` — 了解最新版本狀態，避免重複或衝突
 
 ### 完成後（必做）
 1. 將 `TODO.md` 對應項目從 `[ ]` 改為 `[x]`
