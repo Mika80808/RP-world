@@ -83,7 +83,10 @@ export function useGameStore() {
 
   // ── 任務 ────────────────────────────────────────────────────────────────────
   const [quests, setQuests] = useState<Quest[]>(
-    () => (_s?.quests as Quest[]) || []
+    () => ((_s?.quests as Quest[]) || []).map(q => ({
+      isGoalMet: false,   // 舊存檔 migrate：補預設值
+      ...q,
+    }))
   );
 
   // ── 日記 ────────────────────────────────────────────────────────────────────
@@ -176,7 +179,9 @@ export function useGameStore() {
 
     if (saveData.quickOptions) setQuickOptions(saveData.quickOptions as string[]);
     if (saveData.timeState) setTimeState(saveData.timeState as TimeState);
-    if (saveData.quests) setQuests(saveData.quests as Quest[]);
+    if (saveData.quests) setQuests(
+      (saveData.quests as Quest[]).map(q => ({ isGoalMet: false, ...q }))
+    );
   };
 
   return {

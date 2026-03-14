@@ -10,7 +10,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { SystemPromptModal } from './components/SystemPromptModal';
 import { SettingsModal } from './components/SettingsModal';
 import { MapModal } from './components/MapModal';
-import { Npc, LorebookEntry } from './types';
+import { Npc, LorebookEntry, Message } from './types';
 import { MONTHS_DATA, TOKEN_OPTIONS } from './constants';
 import { useGameStore, SAVE_KEY } from './hooks/useGameStore';
 import { useCommandParser } from './hooks/useCommandParser';
@@ -544,7 +544,7 @@ ${recentChat}
   };
 
   // ─── Prompt 組裝 ─────────────────────────────────────────────────────────────
-  const buildPrompt = (userInput: string, currentMessages: any[]): string => {
+  const buildPrompt = (userInput: string, currentMessages: Message[]): string => {
     const SLIDING_WINDOW = 20;
 
     const lorebookScanText = currentMessages.slice(-5).map(m => m.text).join(' ') + ' ' + userInput;
@@ -641,6 +641,9 @@ ${(() => {
     const remaining = q.deadline != null
       ? `剩 ${q.deadline - (todayTotal - q.createdAtTotalDays)} 天`
       : '無期限';
+    if (q.isGoalMet) {
+      return `${q.title}（委託：${q.giver}，目標已達成，待玩家回報）`;
+    }
     return `${q.title}（委託：${q.giver}，${remaining}）`;
   }).join('\n');
 })()}
@@ -720,6 +723,7 @@ ITEM_ADD:魔法藥水:2:恢復魔力:mp=30
 ITEM_ADD:毒藥:1:造成中毒:status=poisoned:hp=-5
 ITEM_USE:道具名
 QUEST_ADD:任務名稱:委託人NPC:目標描述:獎勵金幣:獎勵道具(逗號分隔可留空):期限天數(可留空=無期限)
+QUEST_GOAL_MET:任務名稱
 QUEST_COMPLETE:任務名稱
 NPC_THOUGHT:角色名:一句話內心想法
 NPC_RELATIONSHIP:角色名:與玩家的關係描述
@@ -749,8 +753,11 @@ MEMORY_ADD:world:critical:魔王宣布向月湖鎮宣戰:keywords=魔王,宣戰
 【AI 何時應輸出 QUEST_ADD】
 當 NPC 正式委託玩家任務、或玩家從布告欄接取任務時輸出。格式：QUEST_ADD:任務名:委託人:目標描述:獎勵金幣(數字):獎勵道具(逗號分隔,可留空):期限天數(數字,可留空)。任務名稱之後的欄位均可留空。
 
+【AI 何時應輸出 QUEST_GOAL_MET】
+當 AI 判斷玩家已實際完成任務目標（例如：找到了物品、擊敗了目標、完成了交涉），但玩家尚未回到委託人處回報時，靜默輸出此指令。前端會標記任務為「待回報」狀態並提示玩家。
+
 【AI 何時應輸出 QUEST_COMPLETE】
-當玩家向委託人回報、AI 判斷任務確實達成時輸出。必須使用與 QUEST_ADD 完全相同的任務名稱。
+當玩家親自向委託人回報、且 AI 確認任務結案時輸出。必須使用與 QUEST_ADD 完全相同的任務名稱。若任務已標記 isGoalMet，此指令將自動發放獎勵並關閉任務。
 
 【AI 何時應輸出 NPC_NEW / NPC_HOME / NPC_LOCATION】
 - NPC_NEW：創造有名有姓、會在世界中固定出現的新角色時輸出（一次性建檔）

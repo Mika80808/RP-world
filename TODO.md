@@ -18,7 +18,8 @@
 
 ## 🔴 高優先
 
-- [ ] **任務系統規格升級**
+- [x] **任務系統規格升級**
+  2026-03-14 [Claude]: 新增 `isGoalMet` 欄位至 `Quest` 型別；`useCommandParser` 新增 `QUEST_GOAL_MET` 指令解析；`useGameStore` 舊存檔自動 migrate；`buildPrompt` 依 `isGoalMet` 狀態輸出不同格式；`QuestModal` 擴充為四狀態頭部（進行中/待回報/已完成/失敗）+ 勾選框 + 琥珀色待回報樣式。TypeScript 零錯誤。
 
   **功能意義**：實作「目標達成 → 回報領賞」的兩階段任務流程。AI 判斷目標達成時輸出隱藏指令，玩家回報後才正式結案並發放獎勵。
 
@@ -173,7 +174,8 @@
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。設定 Modal 加色塊選擇器，儲存至 localStorage。
 
-- [ ] **Prompt 靜態資料提取至 constants.ts**
+- [x] **Prompt 靜態資料提取至 constants.ts**
+  2026-03-14 [Claude]: 確認已於 v9 完成。`src/constants.ts` 已匯出 MONTHS_DATA、INITIAL_SYSTEM_PROMPT、INITIAL_LOREBOOK_ENTRIES、INITIAL_WORLD_MAP、INITIAL_MESSAGES、TOKEN_OPTIONS；`useGameStore.ts` 與 `App.tsx` 均已正確 import。
 
   **背景**：`App.tsx` 中有大量靜態文字以 hardcode 方式嵌入 useState 初始值，導致檔案臃腫。`buildPrompt()` 函數本體與 COMMAND FORMAT 說明不移動（依賴 state），只搬靜態資料。
 

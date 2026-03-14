@@ -373,12 +373,29 @@ export function useCommandParser(deps: CommandParserDeps) {
               },
               ...(deadlineDays ? { deadline: deadlineDays } : {}),
               status: 'active' as const,
+              isGoalMet: false,
               createdAt: `${timeState.month}/${timeState.day}`,
               createdAtTotalDays,
             }];
           });
           toastQueue.push(`📋 新任務：${title}`);
           onNewQuest?.();
+        }
+        continue;
+      }
+
+      // QUEST_GOAL_MET
+      const questGoalMetMatch = cmd.match(/^QUEST_GOAL_MET:(.+)$/i);
+      if (questGoalMetMatch) {
+        const titleTrimmed = questGoalMetMatch[1].trim();
+        const quest = quests.find(q => q.title === titleTrimmed && q.status === 'active' && !q.isGoalMet);
+        if (quest) {
+          setQuests(prev => prev.map(q =>
+            q.title === titleTrimmed && q.status === 'active'
+              ? { ...q, isGoalMet: true }
+              : q
+          ));
+          toastQueue.push(`🎯 任務目標達成：${titleTrimmed}（請向委託人回報）`);
         }
         continue;
       }

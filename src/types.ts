@@ -32,6 +32,7 @@ export interface Quest {
   };
   deadline?: number | null;
   status: 'active' | 'completed' | 'failed';
+  isGoalMet: boolean;           // 目標是否已達成（等待玩家回報）
   createdAt: string;
   createdAtTotalDays: number;
   completedAt?: string;

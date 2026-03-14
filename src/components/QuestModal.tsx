@@ -1,5 +1,5 @@
 import React from 'react';
-import { Book, X, CheckCircle, XCircle, Clock, Coins } from 'lucide-react';
+import { Book, X, CheckCircle, XCircle, Clock, Coins, AlertCircle } from 'lucide-react';
 
 import { Quest } from '../types';
 
@@ -13,9 +13,10 @@ interface QuestModalProps {
 export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests, currentTotalDays }) => {
   if (!isOpen) return null;
 
-  const activeQuests = quests.filter(q => q.status === 'active');
+  const activeQuests    = quests.filter(q => q.status === 'active' && !q.isGoalMet);
+  const pendingQuests   = quests.filter(q => q.status === 'active' && q.isGoalMet);
   const completedQuests = quests.filter(q => q.status === 'completed');
-  const failedQuests = quests.filter(q => q.status === 'failed');
+  const failedQuests    = quests.filter(q => q.status === 'failed');
 
   const getRemaining = (q: Quest): string | null => {
     if (q.deadline == null) return null;
@@ -42,20 +43,25 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests,
             <h2 className="text-lg font-bold text-stone-100">任務日誌</h2>
           </div>
 
-          {/* Status counts */}
-          <div className="flex items-center gap-4 text-sm">
+          {/* Status counts — 4 kinds */}
+          <div className="flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
               <span className="text-emerald-400 font-medium">{activeQuests.length}</span>
               <span className="text-stone-400">進行中</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-stone-500 inline-block"></span>
+              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+              <span className="text-amber-400 font-medium">{pendingQuests.length}</span>
+              <span className="text-stone-400">待回報</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-stone-500 inline-block" />
               <span className="text-stone-300 font-medium">{completedQuests.length}</span>
               <span className="text-stone-500">已完成</span>
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
               <span className="text-red-400 font-medium">{failedQuests.length}</span>
               <span className="text-stone-500">失敗</span>
             </span>
@@ -72,7 +78,43 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests,
         {/* Quest list */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
 
-          {/* Active quests */}
+          {/* Pending (goalMet) quests — amber, shown first */}
+          {pendingQuests.map(q => {
+            const remaining = getRemaining(q);
+            return (
+              <div key={q.id} className="border border-amber-500/40 bg-amber-950/20 rounded-xl p-4">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className="font-bold text-stone-100 leading-snug">{q.title}</h3>
+                  <span className="flex-shrink-0 flex items-center gap-1 text-xs text-amber-300 bg-amber-900/40 border border-amber-700/30 px-2 py-0.5 rounded-full">
+                    <AlertCircle className="w-3 h-3" />
+                    待回報
+                  </span>
+                </div>
+                <p className="text-xs text-amber-300/80 mb-2">委託：{q.giver || '—'}</p>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 mt-0.5 flex-shrink-0">☑</span>
+                  <p className="text-sm text-stone-300 leading-relaxed">{q.description}</p>
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="flex items-center gap-1 text-xs text-stone-400">
+                    <Coins className="w-3 h-3 text-amber-400" />
+                    {renderReward(q)}
+                  </span>
+                  <div className="flex items-center gap-3 text-xs text-stone-500">
+                    {remaining !== null && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        剩 {remaining}
+                      </span>
+                    )}
+                    <span>接受：{q.createdAt}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Active (not yet goalMet) quests — green */}
           {activeQuests.map(q => {
             const remaining = getRemaining(q);
             return (
@@ -85,7 +127,10 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests,
                   </span>
                 </div>
                 <p className="text-xs text-amber-300/80 mb-2">委託：{q.giver || '—'}</p>
-                <p className="text-sm text-stone-300 leading-relaxed">{q.description}</p>
+                <div className="flex items-start gap-2">
+                  <span className="text-stone-500 mt-0.5 flex-shrink-0">☐</span>
+                  <p className="text-sm text-stone-300 leading-relaxed">{q.description}</p>
+                </div>
                 <div className="flex items-center justify-between mt-3">
                   <span className="flex items-center gap-1 text-xs text-stone-400">
                     <Coins className="w-3 h-3 text-amber-400" />
@@ -108,7 +153,10 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests,
                 </span>
               </div>
               <p className="text-xs text-stone-600 mb-2">委託：{q.giver || '—'}</p>
-              <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              <div className="flex items-start gap-2">
+                <span className="text-stone-600 mt-0.5 flex-shrink-0">☑</span>
+                <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              </div>
               <div className="flex items-center justify-between mt-3">
                 <span className="flex items-center gap-1 text-xs text-stone-600">
                   <Coins className="w-3 h-3" />
@@ -130,7 +178,10 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, quests,
                 </span>
               </div>
               <p className="text-xs text-stone-600 mb-2">委託：{q.giver || '—'}</p>
-              <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              <div className="flex items-start gap-2">
+                <span className="text-stone-600 mt-0.5 flex-shrink-0">☐</span>
+                <p className="text-sm text-stone-500 leading-relaxed line-through">{q.description}</p>
+              </div>
               <div className="flex items-center justify-between mt-3">
                 <span className="flex items-center gap-1 text-xs text-stone-600">
                   <Coins className="w-3 h-3" />

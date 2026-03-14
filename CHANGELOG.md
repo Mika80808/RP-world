@@ -5,7 +5,27 @@
 
 ---
 
-## [2026-03-14] v10（當前版本）
+## [2026-03-14] v11（當前版本）
+
+### 任務系統規格升級：兩階段完成流程 + QUEST_GOAL_MET
+
+實作「目標達成 → 回報領賞」的兩階段任務流程，讓任務完成更沉浸、更符合 RPG 邏輯。
+
+- **`src/types.ts`**：Quest 介面新增 `isGoalMet: boolean` 欄位，表示目標是否已達成但尚未回報；`buildPrompt` 型別安全修正（`currentMessages` 改為 `Message[]`，補 `Message` import）。
+- **`src/hooks/useCommandParser.ts`**：
+  - `QUEST_ADD` 建立任務時預設 `isGoalMet: false`
+  - 新增 `QUEST_GOAL_MET:任務名` 指令解析：將任務標記為目標已達成，Toast「🎯 任務目標達成：XX（請向委託人回報）」
+- **`src/hooks/useGameStore.ts`**：存檔載入時自動 migrate 舊任務（補 `isGoalMet: false` 預設值）。
+- **`src/App.tsx`**（`buildPrompt`）：進行中任務注入依 `isGoalMet` 狀態輸出不同格式（目標已達成顯示「目標已達成，待玩家回報」）；COMMAND FORMAT 新增 `QUEST_GOAL_MET` 範例與說明。
+- **`src/components/QuestModal.tsx`**：
+  - 頂部狀態計數擴充為四種（進行中 / 待回報 / 已完成 / 失敗）
+  - 每張任務卡前方加勾選框（☐ 進行中 / ☑ 待回報與已完成）
+  - 待回報任務：琥珀色邊框，右上角「待回報」標籤，勾選框顯示 ☑
+  - 待回報任務排在進行中任務前面顯示
+
+---
+
+## [2026-03-14] v10
 
 ### App.tsx 狀態管理重構 + 型別安全全面修正
 將 App.tsx 從「大雜燴」重構為純 UI 容器，邏輯完全由自訂 Hooks 驅動。
