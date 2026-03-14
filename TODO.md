@@ -18,68 +18,6 @@
 
 ## 🔴 高優先
 
-- [x] **任務系統規格升級**
-  2026-03-14 [Claude]: 新增 `isGoalMet` 欄位至 `Quest` 型別；`useCommandParser` 新增 `QUEST_GOAL_MET` 指令解析；`useGameStore` 舊存檔自動 migrate；`buildPrompt` 依 `isGoalMet` 狀態輸出不同格式；`QuestModal` 擴充為四狀態頭部（進行中/待回報/已完成/失敗）+ 勾選框 + 琥珀色待回報樣式。TypeScript 零錯誤。
-
-  **功能意義**：實作「目標達成 → 回報領賞」的兩階段任務流程。AI 判斷目標達成時輸出隱藏指令，玩家回報後才正式結案並發放獎勵。
-
-  **資料結構**（`quests` state，在現有基礎上新增 `isGoalMet`）：
-```typescript
-  {
-    id: string,
-    title: string,
-    giver: string,
-    description: string,
-    reward: { gold?: number, items?: string[] },
-    deadline?: number,
-    status: 'active' | 'completed' | 'failed',
-    isGoalMet: boolean,          // 新增：目標是否已達成（對應勾選框狀態）
-    createdAt: string,           // 遊戲內日期 M/D
-    createdAtTotalDays: number,  // 計算期限用
-    completedAt?: string
-  }
-```
-
-  **COMMANDS 新增 / 修正指令**（於 `parseAndExecuteCommands` 解析）：
-  - `QUEST_ADD:任務名:委託人:目標描述:獎勵金幣:獎勵道具:期限天數`
-    - 建立新任務，`status='active'`，`isGoalMet=false`，自動開啟 QuestModal
-    - Toast：「📋 新任務：XX」
-  - `QUEST_GOAL_MET:任務名`（新增，放在 COMMANDS 區塊，取代舊的內文標記方式）
-    - 將對應任務 `isGoalMet` 設為 `true`
-    - 從對話顯示文字中不做任何輸出（純靜默更新）
-    - Toast：「🎯 任務目標達成：XX（請向委託人回報）」
-  - `QUEST_COMPLETE:任務名`
-    - 條件：玩家向委託人回報後，AI 判斷確實完成
-    - 將對應任務 `status` 改為 `'completed'`
-    - 自動發放獎勵：gold 加入 `profile.gold`，items 加入 `inventory`
-    - Toast：「✅ 任務完成：XX，獲得 XX 銅」
-
-  **期限自動失敗**：
-  - 每次 `TIME_ADVANCE` 指令執行後，前端掃描所有 `status='active'` 的任務
-  - 計算 `createdAtTotalDays + deadline` 是否小於當前遊戲總天數
-  - 超過則自動標記 `status='failed'`
-  - Toast：「❌ 任務失敗：XX」
-
-  **Prompt 注入**（於 `buildPrompt`）：
-  - 掃描所有 `status='active'` 的任務，依 `isGoalMet` 狀態輸出不同格式：
-```
-    [進行中任務]
-    尋找失蹤的藥草（委託：烏爾夫，剩 3 天）
-    送信給獵人公會（委託：芬里爾，目標已達成，待玩家回報）
-```
-  - COMMAND FORMAT 說明補充：
-    - `QUEST_ADD`：NPC 委託玩家任務、或布告欄出現可接取的任務時輸出
-    - `QUEST_GOAL_MET`：AI 判斷玩家已完成任務目標（但玩家尚未回報）時輸出，放在 COMMANDS 區塊
-    - `QUEST_COMPLETE`：玩家向委託人回報、AI 確認結案時輸出，必須使用與 QUEST_ADD 完全相同的任務名稱
-
-  **QuestModal UI**（`src/components/QuestModal.tsx`）：
-  - 頂部狀態計數：進行中 / 待回報 / 已完成 / 失敗（四種）
-  - 每張任務卡片顯示：任務名、委託人、目標描述（前方勾選框由前端依 `isGoalMet` 控制）、獎勵、接受日期
-  - 進行中（`isGoalMet=false`）：綠色邊框，右上角顯示剩餘天數或「無期限」
-  - 待回報（`isGoalMet=true`）：琥珀色邊框 + 右上角「待回報」標籤，勾選框變為 `☑`
-  - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
-  - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
-
 - [ ] **道具 effect 前端處理**
 
   **功能意義**：消耗品使用後由前端直接套用數值變化，不需要 AI 介入計算，減少 token 消耗並確保數值即時更新。
@@ -108,65 +46,86 @@
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
 
-- [x] **世界地圖重寫（狀態邏輯 + 旅行系統）**
-  2026-03-14 [Claude]: `types.ts` LorebookEntry 新增 mapX/mapY/cartFare/mapStatus/adjacentTo 五個可選欄位；`constants.ts` INITIAL_LOREBOOK_ENTRIES 所有 15 個地點補上座標與車資；`useCommandParser` LOCATION_DISCOVER 改操作 lorebookEntries.mapStatus；`MapModal.tsx` 完整重寫（lorebookEntries 作資料來源、全圓形節點、bezier 曲線、右欄地點資訊+區域記憶+旅行按鈕、坐馬車/徒步邏輯）；`App.tsx` 移除舊 calculateTravelTime/mapOrigin/mapDestination，新增 handleTravel handler。TypeScript 零錯誤。
+- [x] **世界地圖重寫（深藍金風格 + 旅行系統）**
+  2026-03-14 [Claude]: `MapModal.tsx` 完整視覺重寫：深海藍底色（#0a1628）+ 金色手稿風格；八角星芒節點（known/current/selected）+ 虛線圓形（discovered）；金色 bezier 虛線曲線；四角 L 型裝飾線；格線紋理 + 暗角；羅盤（左下角，點擊重置視角）；Header 搜尋欄；右欄兩段式旅行選擇（選方式→啟程）；圖例移至右欄底部。App.tsx 新增 `showToast` prop 傳入 MapModal。TypeScript 零錯誤。
 
-  **地點狀態邏輯**（兩狀態，移除原本的 visited）：
-  - `discovered`（預設）：半透明 + 問號 icon，尚未造訪
-  - `known`：正常顯示，統一圓形 icon，造訪後解鎖
-  - 所有地點初始化時 `mapStatus` 預設為 `'discovered'`
-  - 玩家透過馬車或徒步抵達某地點後，前端自動將該地點 `mapStatus` 改為 `'known'`
-  - `LorebookEntry` 型別中 `mapStatus: 'discovered' | 'known'`（移除舊的 `'visited'`）
+  **視覺設計語彙**（深海藍 × 金色手稿風）：
+  - 整體底色：`#0a1628`（深海藍）
+  - 強調色：`#c9a84c`（金色）——節點星芒、標題上邊線、分隔菱形、啟程按鈕
+  - 次要文字色：`#8ab4e8`（淡藍）——地點描述、區域記憶、已知節點標籤
+  - 目標節點色：`#cc2200`（深紅）——選中目標地點
+  - 容器背景：`#0d1f3c`，邊框 `0.5px solid #2a4a7f`，頂邊 `1.5px solid #c9a84c`
+  - 字體：`Georgia, serif`（全站）
+  - 紙張紋理：細格線疊加層（`rgba(100,140,200,0.03)`）
+  - 暗角：`radial-gradient` 邊緣加深至 `rgba(5,12,28,0.7)`
+  - 四角 L 型裝飾線：金色 `#c9a84c`，`stroke-width: 1.2`
+
+  **地點狀態邏輯**（兩狀態）：
+  - `discovered`（預設）：虛線圓圈，`stroke: #5a8fc9`，`opacity: 0.35`，標籤顯示「???」
+  - `known`：八角星芒節點，藍色星芒 `#4a7ac9`，中心亮點 `#8ab4e8`
+  - 玩家所在地（`currentLocation`）：金色八角星芒 `#c9a84c`，三層暈光，中心 `#fde68a`
+  - 選中目標：深紅八角星芒 `#cc4422`，三層暈光，中心 `#ff8866`
 
   **節點連線邏輯**：
-  - 平時地圖上不顯示任何連線
-  - 玩家點選第一個地點、再點選第二個地點時，才出現一條 SVG cubic bezier 曲線連接這兩個節點
-  - 玩家關閉右欄或取消選取時，曲線消失
+  - 平時不顯示任何連線
+  - 玩家點選第一個節點後再點選第二個節點，出現金色虛線 bezier 曲線（`stroke: #c9a84c`，`stroke-dasharray: 5 3`）
+  - 取消選取或關閉 Modal 時曲線消失
 
   **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
-  - `mapX: number`、`mapY: number`：節點座標，固定，手動設定
-  - `adjacentTo: string[]`：相鄰地點名稱陣列（保留，供未來旅行時間計算用）
-  - `cartFare: number`：馬車車費（銅幣），`0` 表示不可搭馬車（例如大斷崖）
-  - `mapStatus: 'discovered' | 'known'`：解鎖狀態，預設 `'discovered'`
+  - `mapX: number`、`mapY: number`：節點座標，手動設定
+  - `cartFare: number`：馬車車費（銅幣），`0` 表示不可搭馬車
+  - `mapStatus: 'discovered' | 'known'`：預設 `'discovered'`
+  - 玩家抵達後前端自動改為 `'known'`
 
   **地圖 UI 重寫**（`src/components/MapModal.tsx`）：
-  - SVG canvas 節點網絡圖，節點一律使用圓形 icon
-  - 節點依狀態視覺區分：
-    - 玩家所在地（`currentLocation`）：綠色微發光
-    - `known`：正常亮色
-    - `discovered`：半透明 + 問號
-  - 地圖開啟時自動 highlight 玩家所在節點
-  - 點選第一個節點 → 右欄顯示地點資訊；點選第二個節點 → 出現 bezier 曲線 + 右欄切換為第二個地點資訊
+  - SVG canvas，背景 `#0a1628`，細格線 + 暗角疊加
+  - 四角金色 L 型裝飾線（純裝飾，無互動）
+  - 節點一律用八角星芒圖形（`<polygon>`），依狀態套用對應顏色
+  - 地圖開啟時自動以玩家所在節點為視覺中心
 
-  **點選節點後右欄顯示**：
-  - 地點名稱、content 簡述
-  - 區域記憶：篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱
+  **右欄資訊面板**（點選節點後顯示）：
+  - 標題列：`✦ 【地點名稱】` + 狀態標籤（目標 / 當前位置）
+  - 菱形分隔線
+  - 地點描述（`content` 欄位）
+  - 區域記憶區塊：`✦ 區域記憶` 標題 + 金色左邊線條列記憶碎片
+    （篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱）
   - 行動按鈕（玩家不在該地點時才顯示）：
-    - 「🐴 坐馬車」（`cartFare > 0` 時才顯示）
-    - 「🚶 徒步前往」
+    - 「🚶 徒步前往」（藍色邊框）
+    - 「🐴 馬車 XXG」（金色邊框，`cartFare > 0` 時才顯示）
+  - 啟程按鈕：金底深藍字，全寬
 
   **坐馬車邏輯**：
-  ```
-  點擊「坐馬車」
+```
+  點擊「啟程」（馬車模式）
   → 判定 profile.gold >= cartFare
-    → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你決定搭馬車前往[地點]。」，讓 AI 根據兩地情境自行安排情節
-    → 不足：按鈕下方顯示小字「阮囊羞澀」，不執行任何動作
-  ```
+    → 足夠：前端扣除金幣，更新 currentLocation，mapStatus 改為 'known'
+             送出訊息「你決定搭馬車前往[地點]。」，AI 安排情節
+    → 不足：按鈕下方顯示「阮囊羞澀」提示，不執行任何動作
+```
 
   **徒步邏輯**：
-  ```
-  點擊「徒步前往」
-  → 更新 currentLocation
+```
+  點擊「啟程」（徒步模式）
+  → 更新 currentLocation，mapStatus 改為 'known'
   → 送出訊息「你決定徒步前往[地點]。」
   → AI 接手安排旅途事件
-  ```
+```
+
+  **羅盤**（左下角，純裝飾 + 功能）：
+  - 深藍底 `#0a1628` + 金色 `#c9a84c` 八角星芒
+  - 指北針為金色，其餘方向藍色
+  - hover 降低透明度，點擊重置地圖視角並顯示「視角已重置」Toast
+
+  **搜尋欄**：
+  - 深藍底，底邊 `1.5px solid #c9a84c`，佔位文字「搜尋地點...」
+  - 即時篩選右欄地點列表（非篩選地圖節點）
 
   **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
-  - `LOCATION_DISCOVER:地點名`：將對應地點的 `mapStatus` 改為 `'known'`（若已在 lorebookEntries 中），或新增一筆 `mapStatus='discovered'` 的條目
+  - `LOCATION_DISCOVER:地點名`：將對應 lorebookEntry 的 `mapStatus` 改為 `'known'`；若不存在則新增一筆 `mapStatus='discovered'` 的條目
   - Toast：「🗺️ 發現新地點：XX」
 
   **buildPrompt COMMAND FORMAT 說明補充**：
-  - `LOCATION_DISCOVER`：當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點時輸出
+  - `LOCATION_DISCOVER`：玩家在旅途中路過、聽說或間接發現尚未踏足的地點時輸出
 
 ---
 
@@ -175,23 +134,6 @@
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。設定 Modal 加色塊選擇器，儲存至 localStorage。
 
-- [x] **Prompt 靜態資料提取至 constants.ts**
-  2026-03-14 [Claude]: 確認已於 v9 完成。`src/constants.ts` 已匯出 MONTHS_DATA、INITIAL_SYSTEM_PROMPT、INITIAL_LOREBOOK_ENTRIES、INITIAL_WORLD_MAP、INITIAL_MESSAGES、TOKEN_OPTIONS；`useGameStore.ts` 與 `App.tsx` 均已正確 import。
-
-  **背景**：`App.tsx` 中有大量靜態文字以 hardcode 方式嵌入 useState 初始值，導致檔案臃腫。`buildPrompt()` 函數本體與 COMMAND FORMAT 說明不移動（依賴 state），只搬靜態資料。
-
-  **移至 `src/constants.ts`**：
-  - `INITIAL_SYSTEM_PROMPT`：`systemPrompt` useState 初始值三段長文字（worldPremise / roleplayRules / writingStyle），約 60–80 行
-  - `INITIAL_LOREBOOK_ENTRIES`：`lorebookEntries` useState 初始值的 14 個地點資料，約 60 行
-  - `MONTHS_DATA`：App.tsx 頂部的 12 個月份雅稱陣列，約 15 行
-
-  **App.tsx 修改方式**：
-  ```typescript
-  import { INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, MONTHS_DATA } from './constants'
-
-  const [systemPrompt, setSystemPrompt] = useState(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT)
-  const [lorebookEntries, setLorebookEntries] = useState(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES)
-  ```
 
   **預期效果**：App.tsx 瘦身約 150–200 行，靜態世界觀資料與邏輯分離。
 
@@ -294,7 +236,145 @@
   - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
   2026-03-14 [Claude]: 建立 `src/hooks/useGameStore.ts`（所有遊戲 state + saveToStorage/loadFromData）、`src/hooks/useCommandParser.ts`（parseAndExecuteCommands/applyItemEffect/scanKeywords/isMemoryTriggered/tickMemoryCounters）。App.tsx 移除約 509 行冗餘程式碼，改為 UI 容器。修正 `src/types.ts`（DiaryEntry 欄位修正、新增 MemoryEntry/InventoryItem/ConsumableItem）。重建被刪除的 `src/main.tsx` 與 `src/index.css`。TypeScript 零錯誤，伺服器正常啟動。
 
+    - [x] **任務系統規格升級**
+  2026-03-14 [Claude]: 新增 `isGoalMet` 欄位至 `Quest` 型別；`useCommandParser` 新增 `QUEST_GOAL_MET` 指令解析；`useGameStore` 舊存檔自動 migrate；`buildPrompt` 依 `isGoalMet` 狀態輸出不同格式；`QuestModal` 擴充為四狀態頭部（進行中/待回報/已完成/失敗）+ 勾選框 + 琥珀色待回報樣式。TypeScript 零錯誤。
+
+  **功能意義**：實作「目標達成 → 回報領賞」的兩階段任務流程。AI 判斷目標達成時輸出隱藏指令，玩家回報後才正式結案並發放獎勵。
+
+  **資料結構**（`quests` state，在現有基礎上新增 `isGoalMet`）：
+```typescript
+  {
+    id: string,
+    title: string,
+    giver: string,
+    description: string,
+    reward: { gold?: number, items?: string[] },
+    deadline?: number,
+    status: 'active' | 'completed' | 'failed',
+    isGoalMet: boolean,          // 新增：目標是否已達成（對應勾選框狀態）
+    createdAt: string,           // 遊戲內日期 M/D
+    createdAtTotalDays: number,  // 計算期限用
+    completedAt?: string
+  }
+```
+
+  **COMMANDS 新增 / 修正指令**（於 `parseAndExecuteCommands` 解析）：
+  - `QUEST_ADD:任務名:委託人:目標描述:獎勵金幣:獎勵道具:期限天數`
+    - 建立新任務，`status='active'`，`isGoalMet=false`，自動開啟 QuestModal
+    - Toast：「📋 新任務：XX」
+  - `QUEST_GOAL_MET:任務名`（新增，放在 COMMANDS 區塊，取代舊的內文標記方式）
+    - 將對應任務 `isGoalMet` 設為 `true`
+    - 從對話顯示文字中不做任何輸出（純靜默更新）
+    - Toast：「🎯 任務目標達成：XX（請向委託人回報）」
+  - `QUEST_COMPLETE:任務名`
+    - 條件：玩家向委託人回報後，AI 判斷確實完成
+    - 將對應任務 `status` 改為 `'completed'`
+    - 自動發放獎勵：gold 加入 `profile.gold`，items 加入 `inventory`
+    - Toast：「✅ 任務完成：XX，獲得 XX 銅」
+
+  **期限自動失敗**：
+  - 每次 `TIME_ADVANCE` 指令執行後，前端掃描所有 `status='active'` 的任務
+  - 計算 `createdAtTotalDays + deadline` 是否小於當前遊戲總天數
+  - 超過則自動標記 `status='failed'`
+  - Toast：「❌ 任務失敗：XX」
+
+  **Prompt 注入**（於 `buildPrompt`）：
+  - 掃描所有 `status='active'` 的任務，依 `isGoalMet` 狀態輸出不同格式：
+```
+    [進行中任務]
+    尋找失蹤的藥草（委託：烏爾夫，剩 3 天）
+    送信給獵人公會（委託：芬里爾，目標已達成，待玩家回報）
+```
+  - COMMAND FORMAT 說明補充：
+    - `QUEST_ADD`：NPC 委託玩家任務、或布告欄出現可接取的任務時輸出
+    - `QUEST_GOAL_MET`：AI 判斷玩家已完成任務目標（但玩家尚未回報）時輸出，放在 COMMANDS 區塊
+    - `QUEST_COMPLETE`：玩家向委託人回報、AI 確認結案時輸出，必須使用與 QUEST_ADD 完全相同的任務名稱
+
+  **QuestModal UI**（`src/components/QuestModal.tsx`）：
+  - 頂部狀態計數：進行中 / 待回報 / 已完成 / 失敗（四種）
+  - 每張任務卡片顯示：任務名、委託人、目標描述（前方勾選框由前端依 `isGoalMet` 控制）、獎勵、接受日期
+  - 進行中（`isGoalMet=false`）：綠色邊框，右上角顯示剩餘天數或「無期限」
+  - 待回報（`isGoalMet=true`）：琥珀色邊框 + 右上角「待回報」標籤，勾選框變為 `☑`
+  - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
+  - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
+
 - [x] **修復 Profile 屬性與類型安全**
   - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
   2026-03-14 [Claude]: `types.ts` 補齊 DiaryEntry（修正欄位對應實際用法）、MemoryEntry、InventoryItem、ConsumableItem 型別定義。useGameStore/useCommandParser 全面使用具體型別，消除 `any`。
 
+- [x] **Prompt 靜態資料提取至 constants.ts**
+  2026-03-14 [Claude]: 確認已於 v9 完成。`src/constants.ts` 已匯出 MONTHS_DATA、INITIAL_SYSTEM_PROMPT、INITIAL_LOREBOOK_ENTRIES、INITIAL_WORLD_MAP、INITIAL_MESSAGES、TOKEN_OPTIONS；`useGameStore.ts` 與 `App.tsx` 均已正確 import。
+
+  **背景**：`App.tsx` 中有大量靜態文字以 hardcode 方式嵌入 useState 初始值，導致檔案臃腫。`buildPrompt()` 函數本體與 COMMAND FORMAT 說明不移動（依賴 state），只搬靜態資料。
+
+  **移至 `src/constants.ts`**：
+  - `INITIAL_SYSTEM_PROMPT`：`systemPrompt` useState 初始值三段長文字（worldPremise / roleplayRules / writingStyle），約 60–80 行
+  - `INITIAL_LOREBOOK_ENTRIES`：`lorebookEntries` useState 初始值的 14 個地點資料，約 60 行
+  - `MONTHS_DATA`：App.tsx 頂部的 12 個月份雅稱陣列，約 15 行
+
+  **App.tsx 修改方式**：
+  ```typescript
+  import { INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, MONTHS_DATA } from './constants'
+
+  const [systemPrompt, setSystemPrompt] = useState(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT)
+  const [lorebookEntries, setLorebookEntries] = useState(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES)
+  ```
+
+  - [x] **世界地圖重寫（狀態邏輯 + 旅行系統）**
+  2026-03-14 [Claude]: `types.ts` LorebookEntry 新增 mapX/mapY/cartFare/mapStatus/adjacentTo 五個可選欄位；`constants.ts` INITIAL_LOREBOOK_ENTRIES 所有 15 個地點補上座標與車資；`useCommandParser` LOCATION_DISCOVER 改操作 lorebookEntries.mapStatus；`MapModal.tsx` 完整重寫（lorebookEntries 作資料來源、全圓形節點、bezier 曲線、右欄地點資訊+區域記憶+旅行按鈕、坐馬車/徒步邏輯）；`App.tsx` 移除舊 calculateTravelTime/mapOrigin/mapDestination，新增 handleTravel handler。TypeScript 零錯誤。
+
+  **地點狀態邏輯**（兩狀態，移除原本的 visited）：
+  - `discovered`（預設）：半透明 + 問號 icon，尚未造訪
+  - `known`：正常顯示，統一圓形 icon，造訪後解鎖
+  - 所有地點初始化時 `mapStatus` 預設為 `'discovered'`
+  - 玩家透過馬車或徒步抵達某地點後，前端自動將該地點 `mapStatus` 改為 `'known'`
+  - `LorebookEntry` 型別中 `mapStatus: 'discovered' | 'known'`（移除舊的 `'visited'`）
+
+  **節點連線邏輯**：
+  - 平時地圖上不顯示任何連線
+  - 玩家點選第一個地點、再點選第二個地點時，才出現一條 SVG cubic bezier 曲線連接這兩個節點
+  - 玩家關閉右欄或取消選取時，曲線消失
+
+  **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
+  - `mapX: number`、`mapY: number`：節點座標，固定，手動設定
+  - `adjacentTo: string[]`：相鄰地點名稱陣列（保留，供未來旅行時間計算用）
+  - `cartFare: number`：馬車車費（銅幣），`0` 表示不可搭馬車（例如大斷崖）
+  - `mapStatus: 'discovered' | 'known'`：解鎖狀態，預設 `'discovered'`
+
+  **地圖 UI 重寫**（`src/components/MapModal.tsx`）：
+  - SVG canvas 節點網絡圖，節點一律使用圓形 icon
+  - 節點依狀態視覺區分：
+    - 玩家所在地（`currentLocation`）：綠色微發光
+    - `known`：正常亮色
+    - `discovered`：半透明 + 問號
+  - 地圖開啟時自動 highlight 玩家所在節點
+  - 點選第一個節點 → 右欄顯示地點資訊；點選第二個節點 → 出現 bezier 曲線 + 右欄切換為第二個地點資訊
+
+  **點選節點後右欄顯示**：
+  - 地點名稱、content 簡述
+  - 區域記憶：篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱
+  - 行動按鈕（玩家不在該地點時才顯示）：
+    - 「🐴 坐馬車」（`cartFare > 0` 時才顯示）
+    - 「🚶 徒步前往」
+
+  **坐馬車邏輯**：
+  ```
+  點擊「坐馬車」
+  → 判定 profile.gold >= cartFare
+    → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你決定搭馬車前往[地點]。」，讓 AI 根據兩地情境自行安排情節
+    → 不足：按鈕下方顯示小字「阮囊羞澀」，不執行任何動作
+  ```
+  **徒步邏輯**：
+  ```
+  點擊「徒步前往」
+  → 更新 currentLocation
+  → 送出訊息「你決定徒步前往[地點]。」
+  → AI 接手安排旅途事件
+  ```
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - `LOCATION_DISCOVER:地點名`：將對應地點的 `mapStatus` 改為 `'known'`（若已在 lorebookEntries 中），或新增一筆 `mapStatus='discovered'` 的條目
+  - Toast：「🗺️ 發現新地點：XX」
+
+  **buildPrompt COMMAND FORMAT 說明補充**：
+  - `LOCATION_DISCOVER`：當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點時輸出

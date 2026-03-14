@@ -1562,6 +1562,7 @@ Please respond as the DM.`;
         profile={profile}
         memories={memories}
         onTravel={handleTravel}
+        showToast={showToast}
       />
 
       {/* Toast Notification */}

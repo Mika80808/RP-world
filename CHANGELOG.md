@@ -5,7 +5,28 @@
 
 ---
 
-## [2026-03-14] v12（當前版本）
+## [2026-03-14] v13（當前版本）
+
+### 世界地圖視覺重寫（深藍金風格）
+
+完整翻新 MapModal.tsx 視覺設計，石板灰圓形節點 → 深海藍底 × 金色手稿風格。
+
+- **`src/components/MapModal.tsx`（完整視覺重寫）**：
+  - 整體底色 `#0a1628`（深海藍），容器背景 `#0d1f3c`，金色頂邊線 `#c9a84c`
+  - 節點形狀：`known`/`current`/`selected` → 八角星芒 `<polygon>`（`starPoints()` helper）；`discovered` → 虛線圓形 + `?`
+  - 節點色：currentLocation 金色 `#c9a84c` 三層暈光；selected 深紅 `#cc4422` 三層暈光；known 藍色 `#4a7ac9`
+  - Bezier 曲線改為金色虛線（`stroke: #c9a84c`, `strokeDasharray: 5 3`）
+  - SVG 裝飾：細格線紋理 + 暗角 radialGradient + 四角 L 型金色裝飾線
+  - 羅盤（左下角絕對定位）：八角星芒底盤 + 指北針金色 / 其餘藍色，點擊重置視角 + Toast
+  - Header 搜尋欄：深藍底、金色底邊線，即時篩選右欄地點列表
+  - 右欄重設計：`✦ 【地點名稱】` 標題、菱形分隔線、金色左邊線區域記憶、兩段式旅行選擇（選模式 → 啟程金底按鈕）
+  - 無選取狀態：顯示已知/未踏足地點列表（可點擊跳至該節點）
+  - 圖例移至右欄底部小字
+- **`src/App.tsx`**：MapModal JSX 新增 `showToast={showToast}` prop
+
+---
+
+## [2026-03-14] v12
 
 ### 世界地圖完整重寫：lorebookEntries 資料源 + 旅行系統
 
