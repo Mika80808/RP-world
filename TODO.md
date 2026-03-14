@@ -18,10 +18,18 @@
 
 ## 🔴 高優先
 
-- [x] **型別與常數提取重構**
-  2026-03-14 [Gemini]: 建立 `src/types.ts` 與 `src/constants.ts`，統一 `Profile`, `Npc`, `Quest`, `LorebookEntry`, `SystemPrompt`, `TimeState`, `WorldMap`, `Message`, `DiaryEntry` 等核心型別與靜態資料。重構 `App.tsx` 與所有 Modal 組件以引用統一的型別與常數，移除重複定義，提升維護性。
+- [ ] **重構 App.tsx 狀態管理**
+  **功能意義**：目前 `App.tsx` 仍持有大量與 `useGameStore` 重複的冗餘 state，且初始化邏輯不一致。
+  **任務內容**：
+  - 將 `App.tsx` 的所有遊戲狀態完全遷移至 `useGameStore`。
+  - 統一 `localStorage` 鍵名，確保存檔讀取路徑唯一。
+  - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
 
-- [x] **任務系統規格升級**
+- [ ] **修復 Profile 屬性與類型安全**
+  - 在 `INITIAL_PROFILE` 與 `Profile` 接口中補回 `maxHp` / `maxMp`。
+  - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
+
+- [ ] **任務系統規格升級**
 
   **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。
 
@@ -75,9 +83,8 @@
   - 進行中：綠色邊框，右上角顯示剩餘天數或「無期限」
   - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
   - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
-  2026-03-13 Claude: 完整實作 quests state；parseAndExecuteCommands 新增 QUEST_ADD/QUEST_COMPLETE 解析；TIME_ADVANCE 後掃描 deadline 自動標記 failed；QUEST_COMPLETE 自動發放金幣與道具獎勵；buildPrompt 注入進行中任務清單；QuestModal 三狀態計數卡片 UI。
 
-- [x] **道具 effect 前端處理**
+- [ ] **道具 effect 前端處理**
 
   **功能意義**：消耗品使用後由前端直接套用數值變化，不需要 AI 介入計算，減少 token 消耗並確保數值即時更新。
 
@@ -104,11 +111,32 @@
 
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
-  2026-03-13 Claude: Consumable 介面新增 effect 欄位（hp/mp/gold/status）；新增 applyItemEffect() 共用函數；parseAndExecuteCommands 解析 ITEM_USE 指令；道具欄「使用」按鈕呼叫 applyItemEffect；buildPrompt 補充 ITEM_USE 說明；Toast 依 effect 動態顯示。
 
 ---
 
 ## 🟡 中優先
+
+- [ ] **Prompt 靜態資料提取至 constants.ts**
+
+  **背景**：`App.tsx` 中的 `buildPrompt()` 函數雖然必須留在原處（依賴大量 state），但其中有大量靜態文字目前以 hardcode 方式嵌入，導致函數本體臃腫難以維護。
+
+  **需移出的靜態內容**（移至 `src/constants.ts`）：
+  - `INITIAL_SYSTEM_PROMPT`：目前在 `systemPrompt` useState 初始值中的三段長文字（`worldPremise` / `roleplayRules` / `writingStyle`），合計約 60–80 行
+  - `INITIAL_LOREBOOK_ENTRIES`：目前在 `lorebookEntries` useState 初始值中的 14 個地點資料，合計約 60 行（NPC 資料已於 v6 清除，不需處理）
+  - `MONTHS_DATA`：目前在 App.tsx 頂部的 12 個月份雅稱陣列，約 15 行
+
+  **注意**：`buildPrompt()` 函數本體不移動，`COMMAND FORMAT` 說明段落也不移動，這些都是動態邏輯的一部分。
+
+  **App.tsx 修改方式**：
+  ```typescript
+  import { INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, MONTHS_DATA } from './constants'
+
+  const [systemPrompt, setSystemPrompt] = useState(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT)
+  const [lorebookEntries, setLorebookEntries] = useState(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES)
+  // MONTHS_DATA 直接引用，不再宣告於函數體內
+  ```
+
+  **預期效果**：App.tsx 瘦身約 150–200 行，靜態世界觀資料與程式碼邏輯分離，玩家或 AI 日後修改世界設定只需看 constants.ts。
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
