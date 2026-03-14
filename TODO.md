@@ -18,10 +18,18 @@
 
 ## 🔴 高優先
 
-- [x] **型別與常數提取重構**
-  2026-03-14 [Gemini]: 建立 `src/types.ts` 與 `src/constants.ts`，統一 `Profile`, `Npc`, `Quest`, `LorebookEntry`, `SystemPrompt`, `TimeState`, `WorldMap`, `Message`, `DiaryEntry` 等核心型別與靜態資料。重構 `App.tsx` 與所有 Modal 組件以引用統一的型別與常數，移除重複定義，提升維護性。
+- [ ] **重構 App.tsx 狀態管理**
+  **功能意義**：目前 `App.tsx` 仍持有大量與 `useGameStore` 重複的冗餘 state，且初始化邏輯不一致。
+  **任務內容**：
+  - 將 `App.tsx` 的所有遊戲狀態完全遷移至 `useGameStore`。
+  - 統一 `localStorage` 鍵名，確保存檔讀取路徑唯一。
+  - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
 
-- [x] **任務系統規格升級**
+- [ ] **修復 Profile 屬性與類型安全**
+  - 在 `INITIAL_PROFILE` 與 `Profile` 接口中補回 `maxHp` / `maxMp`。
+  - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
+
+- [ ] **任務系統規格升級**
 
   **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。
 
@@ -75,9 +83,8 @@
   - 進行中：綠色邊框，右上角顯示剩餘天數或「無期限」
   - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
   - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
-  2026-03-13 Claude: 完整實作 quests state；parseAndExecuteCommands 新增 QUEST_ADD/QUEST_COMPLETE 解析；TIME_ADVANCE 後掃描 deadline 自動標記 failed；QUEST_COMPLETE 自動發放金幣與道具獎勵；buildPrompt 注入進行中任務清單；QuestModal 三狀態計數卡片 UI。
 
-- [x] **道具 effect 前端處理**
+- [ ] **道具 effect 前端處理**
 
   **功能意義**：消耗品使用後由前端直接套用數值變化，不需要 AI 介入計算，減少 token 消耗並確保數值即時更新。
 
@@ -104,7 +111,65 @@
 
   **buildPrompt COMMAND FORMAT 說明補充**：
   - `ITEM_USE`：當玩家在對話中明確表示使用某消耗品時輸出，使用與道具欄完全相同的道具名稱
-  2026-03-13 Claude: Consumable 介面新增 effect 欄位（hp/mp/gold/status）；新增 applyItemEffect() 共用函數；parseAndExecuteCommands 解析 ITEM_USE 指令；道具欄「使用」按鈕呼叫 applyItemEffect；buildPrompt 補充 ITEM_USE 說明；Toast 依 effect 動態顯示。
+
+- [ ] **世界地圖重寫（狀態邏輯 + 旅行系統）**
+
+  **地點狀態邏輯**（兩狀態，移除原本的 visited）：
+  - `discovered`（預設）：半透明 + 問號 icon，尚未造訪
+  - `known`：正常顯示，統一圓形 icon，造訪後解鎖
+  - 所有地點初始化時 `mapStatus` 預設為 `'discovered'`
+  - 玩家透過馬車或徒步抵達某地點後，前端自動將該地點 `mapStatus` 改為 `'known'`
+  - `LorebookEntry` 型別中 `mapStatus: 'discovered' | 'known'`（移除舊的 `'visited'`）
+
+  **節點連線邏輯**：
+  - 平時地圖上不顯示任何連線
+  - 玩家點選第一個地點、再點選第二個地點時，才出現一條 SVG cubic bezier 曲線連接這兩個節點
+  - 玩家關閉右欄或取消選取時，曲線消失
+
+  **資料結構異動**（lorebookEntries，category='地點'）新增欄位：
+  - `mapX: number`、`mapY: number`：節點座標，固定，手動設定
+  - `adjacentTo: string[]`：相鄰地點名稱陣列（保留，供未來旅行時間計算用）
+  - `cartFare: number`：馬車車費（銅幣），`0` 表示不可搭馬車（例如大斷崖）
+  - `mapStatus: 'discovered' | 'known'`：解鎖狀態，預設 `'discovered'`
+
+  **地圖 UI 重寫**（`src/components/MapModal.tsx`）：
+  - SVG canvas 節點網絡圖，節點一律使用圓形 icon
+  - 節點依狀態視覺區分：
+    - 玩家所在地（`currentLocation`）：綠色微發光
+    - `known`：正常亮色
+    - `discovered`：半透明 + 問號
+  - 地圖開啟時自動 highlight 玩家所在節點
+  - 點選第一個節點 → 右欄顯示地點資訊；點選第二個節點 → 出現 bezier 曲線 + 右欄切換為第二個地點資訊
+
+  **點選節點後右欄顯示**：
+  - 地點名稱、content 簡述
+  - 區域記憶：篩選 `memories` 中 `type === 'region'` 且 `tags.locations` 包含該地點名稱
+  - 行動按鈕（玩家不在該地點時才顯示）：
+    - 「🐴 坐馬車」（`cartFare > 0` 時才顯示）
+    - 「🚶 徒步前往」
+
+  **坐馬車邏輯**：
+  ```
+  點擊「坐馬車」
+  → 判定 profile.gold >= cartFare
+    → 足夠：前端扣除金幣，更新 currentLocation，送出訊息「你決定搭馬車前往[地點]。」，讓 AI 根據兩地情境自行安排情節
+    → 不足：按鈕下方顯示小字「阮囊羞澀」，不執行任何動作
+  ```
+
+  **徒步邏輯**：
+  ```
+  點擊「徒步前往」
+  → 更新 currentLocation
+  → 送出訊息「你決定徒步前往[地點]。」
+  → AI 接手安排旅途事件
+  ```
+
+  **COMMANDS 新增指令**（於 `parseAndExecuteCommands` 解析）：
+  - `LOCATION_DISCOVER:地點名`：將對應地點的 `mapStatus` 改為 `'known'`（若已在 lorebookEntries 中），或新增一筆 `mapStatus='discovered'` 的條目
+  - Toast：「🗺️ 發現新地點：XX」
+
+  **buildPrompt COMMAND FORMAT 說明補充**：
+  - `LOCATION_DISCOVER`：當玩家在旅途中路過、聽說或間接發現某個尚未正式踏足的地點時輸出
 
 ---
 
@@ -112,6 +177,25 @@
 
 - [ ] **多配色主題**
   用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
+
+- [ ] **Prompt 靜態資料提取至 constants.ts**
+
+  **背景**：`App.tsx` 中有大量靜態文字以 hardcode 方式嵌入 useState 初始值，導致檔案臃腫。`buildPrompt()` 函數本體與 COMMAND FORMAT 說明不移動（依賴 state），只搬靜態資料。
+
+  **移至 `src/constants.ts`**：
+  - `INITIAL_SYSTEM_PROMPT`：`systemPrompt` useState 初始值三段長文字（worldPremise / roleplayRules / writingStyle），約 60–80 行
+  - `INITIAL_LOREBOOK_ENTRIES`：`lorebookEntries` useState 初始值的 14 個地點資料，約 60 行
+  - `MONTHS_DATA`：App.tsx 頂部的 12 個月份雅稱陣列，約 15 行
+
+  **App.tsx 修改方式**：
+  ```typescript
+  import { INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, MONTHS_DATA } from './constants'
+
+  const [systemPrompt, setSystemPrompt] = useState(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT)
+  const [lorebookEntries, setLorebookEntries] = useState(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES)
+  ```
+
+  **預期效果**：App.tsx 瘦身約 150–200 行，靜態世界觀資料與邏輯分離。
 
 - [ ] **更多前端處理項目**
   - 時間系統視覺化（日夜循環 icon / 天空漸層背景）
