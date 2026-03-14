@@ -18,18 +18,6 @@
 
 ## 🔴 高優先
 
-- [x] **重構 App.tsx 狀態管理**
-  **功能意義**：目前 `App.tsx` 仍持有大量與 `useGameStore` 重複的冗餘 state，且初始化邏輯不一致。
-  **任務內容**：
-  - 將 `App.tsx` 的所有遊戲狀態完全遷移至 `useGameStore`。
-  - 統一 `localStorage` 鍵名，確保存檔讀取路徑唯一。
-  - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
-  2026-03-14 [Claude]: 建立 `src/hooks/useGameStore.ts`（所有遊戲 state + saveToStorage/loadFromData）、`src/hooks/useCommandParser.ts`（parseAndExecuteCommands/applyItemEffect/scanKeywords/isMemoryTriggered/tickMemoryCounters）。App.tsx 移除約 509 行冗餘程式碼，改為 UI 容器。修正 `src/types.ts`（DiaryEntry 欄位修正、新增 MemoryEntry/InventoryItem/ConsumableItem）。重建被刪除的 `src/main.tsx` 與 `src/index.css`。TypeScript 零錯誤，伺服器正常啟動。
-
-- [x] **修復 Profile 屬性與類型安全**
-  - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
-  2026-03-14 [Claude]: `types.ts` 補齊 DiaryEntry（修正欄位對應實際用法）、MemoryEntry、InventoryItem、ConsumableItem 型別定義。useGameStore/useCommandParser 全面使用具體型別，消除 `any`。
-
 - [ ] **任務系統規格升級**
 
   **功能意義**：實作「目標達成 → 回報領賞」的兩階段任務流程。AI 判斷目標達成時輸出隱藏指令，玩家回報後才正式結案並發放獎勵。
@@ -183,7 +171,7 @@
 ## 🟡 中優先
 
 - [ ] **多配色主題**
-  用 `data-theme` + CSS variables 切換主題。建議 4 套：暗石板（現有）、深森林綠、午夜紫、羊皮紙米黃。設定 Modal 加色塊選擇器，儲存至 localStorage。
+  用 `data-theme` + CSS variables 切換主題。設定 Modal 加色塊選擇器，儲存至 localStorage。
 
 - [ ] **Prompt 靜態資料提取至 constants.ts**
 
@@ -294,3 +282,16 @@
 
 - [x] **NPC 出沒系統 + 兩階段注入**
   2026-03-13 Claude: LorebookModal.tsx 介面、App.tsx（state/parseAndExecuteCommands/buildPrompt/stream 後處理）。LorebookEntry 新增 `homeLocation`、`roamLocations`（滑動窗口最近 3 個）。COMMANDS 新增 `NPC_NEW`、`NPC_HOME`、`NPC_LOCATION`。Phase 1 注入候選名單（輕量，最多 5 個）；Phase 2 偵測 `[出場:姓名]` 後注入完整資料。
+
+- [x] **重構 App.tsx 狀態管理**
+  **功能意義**：目前 `App.tsx` 仍持有大量與 `useGameStore` 重複的冗餘 state，且初始化邏輯不一致。
+  **任務內容**：
+  - 將 `App.tsx` 的所有遊戲狀態完全遷移至 `useGameStore`。
+  - 統一 `localStorage` 鍵名，確保存檔讀取路徑唯一。
+  - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
+  2026-03-14 [Claude]: 建立 `src/hooks/useGameStore.ts`（所有遊戲 state + saveToStorage/loadFromData）、`src/hooks/useCommandParser.ts`（parseAndExecuteCommands/applyItemEffect/scanKeywords/isMemoryTriggered/tickMemoryCounters）。App.tsx 移除約 509 行冗餘程式碼，改為 UI 容器。修正 `src/types.ts`（DiaryEntry 欄位修正、新增 MemoryEntry/InventoryItem/ConsumableItem）。重建被刪除的 `src/main.tsx` 與 `src/index.css`。TypeScript 零錯誤，伺服器正常啟動。
+
+- [x] **修復 Profile 屬性與類型安全**
+  - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
+  2026-03-14 [Claude]: `types.ts` 補齊 DiaryEntry（修正欄位對應實際用法）、MemoryEntry、InventoryItem、ConsumableItem 型別定義。useGameStore/useCommandParser 全面使用具體型別，消除 `any`。
+
