@@ -26,7 +26,6 @@
   - 確保 `App.tsx` 只作為 UI 容器，邏輯由 Hooks 驅動。
 
 - [ ] **修復 Profile 屬性與類型安全**
-  - 在 `INITIAL_PROFILE` 與 `Profile` 接口中補回 `maxHp` / `maxMp`。
   - 移除 `useCommandParser` 與 `useGameStore` 中的 `any` 類型，改用 `src/types.ts` 定義。
 
 - [ ] **任務系統規格升級**
