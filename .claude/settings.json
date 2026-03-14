@@ -6,7 +6,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npm install && npm run dev &"
+            "command": "npm run dev"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git add . && git commit -m \"Auto save by Claude Code\" && git push"
           }
         ]
       }
