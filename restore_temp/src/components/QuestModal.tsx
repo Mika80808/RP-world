@@ -1,7 +1,21 @@
 import React from 'react';
 import { Book, X, CheckCircle, XCircle, Clock, Coins } from 'lucide-react';
 
-import { Quest } from '../types';
+export interface Quest {
+  id: string;
+  title: string;
+  giver: string;
+  description: string;
+  reward: {
+    gold?: number;
+    items?: string[];
+  };
+  deadline?: number;           // 遊戲天數，undefined = 無期限
+  status: 'active' | 'completed' | 'failed';
+  createdAt: string;           // 顯示用 M/D
+  createdAtTotalDays: number;  // 計算期限用
+  completedAt?: string;        // 完成日期 M/D
+}
 
 interface QuestModalProps {
   isOpen: boolean;

@@ -1,7 +1,11 @@
 import React from 'react';
 import { Brain, Globe, Shield, Sparkles } from 'lucide-react';
 
-import { SystemPrompt } from '../types';
+export interface SystemPrompt {
+  worldPremise: string;
+  roleplayRules: string;
+  writingStyle: string;
+}
 
 interface SystemPromptModalProps {
   isOpen: boolean;

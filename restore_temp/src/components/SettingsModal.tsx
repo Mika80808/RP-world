@@ -1,8 +1,6 @@
 import React, { useRef } from 'react';
 import { Settings, Download, Upload, RotateCcw } from 'lucide-react';
 
-import { TOKEN_OPTIONS } from '../constants';
-
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -14,6 +12,12 @@ interface SettingsModalProps {
   handleImportSave: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleResetGame: () => void;
 }
+
+const TOKEN_OPTIONS = [
+  { label: '8K (較快)', value: 8192 },
+  { label: '32K (標準)', value: 32768 },
+  { label: '64K (長文)', value: 65536 },
+];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,

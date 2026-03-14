@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
 import { BookOpen, Plus, Search, CheckSquare, Square, Trash2 } from 'lucide-react';
 
-import { LorebookEntry } from '../types';
+export interface LorebookEntry {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  isActive: boolean;
+  job?: string;
+  appearance?: string;
+  personality?: string;
+  other?: string;
+  keywords?: string[];
+  secondaryKeys?: string[];
+  selective?: boolean;
+  insertionOrder?: number;
+  homeLocation?: string;
+  roamLocations?: string[];
+}
 
 interface LorebookModalProps {
   isOpen: boolean;

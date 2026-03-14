@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Book, CheckSquare, Square, Trash2, ChevronDown, ChevronRight, Edit3 } from 'lucide-react';
 
-import { DiaryEntry } from '../types';
+export interface DiaryEntry {
+  id: number;
+  text: string;
+  isActive: boolean;
+  keywords?: string[];
+  source?: 'user' | 'ai_generated' | 'merged';
+  mergedFrom?: number[];
+  isMerged?: boolean;
+}
 
 interface DiaryModalProps {
   isOpen: boolean;

@@ -2,7 +2,29 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Map as MapIcon, Navigation, Globe, MapPin, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-import { WorldMap, MapLocation as Location, DynamicLocation } from '../types';
+export interface Location {
+  id: string;
+  name: string;
+  desc: string;
+  x: number;
+  y: number;
+  type?: 'town' | 'danger' | 'city' | 'poi';
+  discovered?: boolean;
+}
+
+export interface DynamicLocation {
+  id: string;
+  name: string;
+  desc: string;
+  location: string;
+  isPinned: boolean;
+  discovered?: boolean;
+}
+
+export interface WorldMap {
+  fixed: Location[];
+  dynamic: DynamicLocation[];
+}
 
 interface MapModalProps {
   isOpen: boolean;

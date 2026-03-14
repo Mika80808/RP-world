@@ -3,21 +3,13 @@ import { Settings, Send, RefreshCw, MoreVertical, Book, BookOpen, User, Package,
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
 import { DiaryModal } from './components/DiaryModal';
-import { LorebookModal } from './components/LorebookModal';
-import { NpcModal } from './components/NpcModal';
-import { QuestModal } from './components/QuestModal';
-import { ProfileModal } from './components/ProfileModal';
-import { SystemPromptModal } from './components/SystemPromptModal';
+import { LorebookModal, LorebookEntry } from './components/LorebookModal';
+import { NpcModal, Npc } from './components/NpcModal';
+import { QuestModal, Quest } from './components/QuestModal';
+import { ProfileModal, Profile } from './components/ProfileModal';
+import { SystemPromptModal, SystemPrompt } from './components/SystemPromptModal';
 import { SettingsModal } from './components/SettingsModal';
-import { MapModal } from './components/MapModal';
-import { 
-  Profile, Npc, Quest, LorebookEntry, SystemPrompt, 
-  TimeState, WorldMap, Message, DiaryEntry 
-} from './types';
-import { 
-  MONTHS_DATA, INITIAL_SYSTEM_PROMPT, INITIAL_LOREBOOK_ENTRIES, 
-  INITIAL_WORLD_MAP, TOKEN_OPTIONS 
-} from './constants';
+import { MapModal, WorldMap } from './components/MapModal';
 
 // ─── Markdown Parser ─────────────────────────────────────────────────────────
 
@@ -113,7 +105,7 @@ export default function App() {
     } catch { return null; }
   })();
 
-  const [timeState, setTimeState] = useState<TimeState>(() => _s?.timeState || {
+  const [timeState, setTimeState] = useState(() => _s?.timeState || {
     year: 1024,
     month: 4,
     day: 15,
@@ -130,6 +122,21 @@ export default function App() {
   };
 
   const timeOfDay = getTimeOfDay(timeState.hour);
+
+  const MONTHS_DATA = [
+    { id: 1, name: '一月', elegant: '初雪之月', desc: '山頂除穢日：將象徵厄運的舊物丟下山崖。' },
+    { id: 2, name: '二月', elegant: '霜降之月', desc: '湖面結冰，準備過冬。' },
+    { id: 3, name: '三月', elegant: '新芽之月', desc: '初獵祭與伴侶誓約週。' },
+    { id: 4, name: '四月', elegant: '雙月之月', desc: '月光特別明亮，彷彿放大一般。霧光許願夜與星織之夜。' },
+    { id: 5, name: '五月', elegant: '驕陽之月', desc: '月湖夏日祭，全種族慶典。' },
+    { id: 6, name: '六月', elegant: '碩果之月', desc: '果實成熟的季節。' },
+    { id: 7, name: '七月', elegant: '落葉之月', desc: '紅斗篷試煉 (目前已取消)。' },
+    { id: 8, name: '八月', elegant: '赤獲之月', desc: '豐收之宴與潮詠節。' },
+    { id: 9, name: '九月', elegant: '初霜之月', desc: '熔火與利齒日，為武器與工具祈福。' },
+    { id: 10, name: '十月', elegant: '祖喚之月', desc: '祖靈低語之夜與冬眠大宴。' },
+    { id: 11, name: '十一月', elegant: '長夜之月', desc: '幻夢開幕夜，異時空商販出現。' },
+    { id: 12, name: '十二月', elegant: '星墜之月', desc: '時之塔守望，冒險者聚集許願。' },
+  ];
 
   const currentMonthData = MONTHS_DATA.find(m => m.id === timeState.month) || MONTHS_DATA[0];
 
@@ -170,6 +177,12 @@ export default function App() {
   );
 
   // ─── Max Tokens ───────────────────────────────────────────────────────────────
+  const TOKEN_OPTIONS = [
+    { label: '16K', value: 16384 },
+    { label: '32K', value: 32768 },
+    { label: '64K', value: 65536 },
+  ];
+
   const [maxTokens, setMaxTokens] = useState<number>(
     () => parseInt(localStorage.getItem('gemini_max_tokens') || '32768')
   );
@@ -192,18 +205,60 @@ export default function App() {
     gold: 0
   });
 
-  const [systemPrompt, setSystemPrompt] = useState<SystemPrompt>(() => _s?.systemPrompt || INITIAL_SYSTEM_PROMPT);
+  const [systemPrompt, setSystemPrompt] = useState<SystemPrompt>(() => _s?.systemPrompt || {
+    worldPremise: '這是一個奇幻異世界，{{user}}將在不知情的情況下探索這個異世界、完成任務、與角色發展關係與感情。\n- 這個異世界由某種高維智慧所維護。\n- 異鄉人來自現實世界，具備基本常識，但對異世界完全陌生。\n- 世界中存在童話故事的變體，例如小紅帽、美人魚等，但劇情與角色可能出現劇情偏移或性格改變。\n- 世界設有主要據點（如中心城鎮）與可探索地區（森林、湖泊、荒原、山區等），每區域對應一組主題任務。\n- 也有許多異世界異鄉人選擇留下(例如成家立業等等)\n- 需體現角色特性，每個種族有特殊的外型特徵和文化習俗，讓角色具有特色。',
+    roleplayRules: '1. 情感深度： 所有角色（含引路者）都可自由與{{user}}建立並發展多元情感。\n2. 劇情驅動： 確保每一次互動都至少為故事增添了一個新資訊、一個新懸念、或是一個人物關係的微小變化。\n3. 角色的自主性:\n- 每位角色具備獨特個性、習慣、目標、怪癖、慾望及社會地位。藉由角色與環境或人物的互動展現其身分、能力與特質，賦予存在價值。\n- 角色擁有獨立日常作息與目標。即使和{{user}}沒有互動，角色也會繼續生活、執行事務，其行動可能與{{user}}的行動交匯或觸發新情節。世界不只圍繞{{user}}的即時行動運轉。\n- 我與角色互動時，場景不僅限於兩人對話，其他角色可能隨時加入、插話、離開或分心。\n4. 人性化的理解力：在日常休閒或私人的社交情境中，優先將我的想法理解為其**內在真實情感**的流露，而非帶有隱藏目的的策略。展現出人性化的理解與共情，但敵對角色不受此限制。\n5. 世界的動態性：\n- Player Decentralization，世界有自己的時鐘和日程表。\n- Emergent Narrative，突發事件與環境變化隨時發生，確保不可預測性與真實流動感。\n6. 任務：\n- 日常任務：以輕鬆方式引導我探索世界，豐富內容，增強沉浸感。\n- 大型任務：將對故事產生影響，事件發生的前因後果及背景邏輯須合理。\n7. NPC生成：當AI生成新NPC時，需必備：姓名、性別、年齡、種族、職業、外貌、個性。\n8. NPC記錄門檻：若AI生成的新NPC具備明確姓名、職業，且會固定出現在特定場所（如店鋪老闆、公會負責人等），請在對話中特別標註 [重要NPC]。\n\n## 親密內容\n- 確保所有成人親密內容均服務於敘事和人物發展，角色行為須符合人物設定。\n- 在親密場景中使用真實、細膩且生動的措詞，器官名稱可使用生物學名。\n- 情侶之間的親密行為，是互相引誘、探索、取悅的過程，角色需依照兩人關係調整學習曲線，避免模式僵化。\n- Slowburn. Prolong all aspects of the back-and-forth journey of sex (foreplay, actions, climax)—orgasm is not the goal.',
+    writingStyle: `每回合輸出：\n- 使用繁體中文，小說體，1000字左右的故事內容，保持句子完整流暢。\n- 描述接下來場景發生的事，不須重複{{user}}給出的內容。\n- 描寫角色們，寫出精確、逼真的細節來創造生動的場景和可信的人物，使用生動的感官細節，創造沉浸式體驗。\n- 保持故事節奏，不要跳躍太快。\n- 角色們需主動和異鄉人互動，結尾須保持開放性。\n- 文筆須豐富多彩、描述感情時須內斂。\n- 嚴禁結束章節，Avoid meta dialogue — story should stay fully immersed in it's own reality.`
+  });
 
-  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(() => _s?.diaryEntries || []);
+  const [diaryEntries, setDiaryEntries] = useState<any[]>(() => _s?.diaryEntries || []);
 
-  const [lorebookEntries, setLorebookEntries] = useState<LorebookEntry[]>(() => _s?.lorebookEntries || INITIAL_LOREBOOK_ENTRIES);
+  const [lorebookEntries, setLorebookEntries] = useState<LorebookEntry[]>(() => _s?.lorebookEntries || [
+    { id: 1, title: '月湖鎮', content: '世界中心，醉醺醺酒館、任務板(日常任務)、情報來源、各類店家、住宅與商店街混合，在這裡可以見到各種奇幻種族。外圍有各種公會的據點，例如異鄉人公會、獵人公會、冒險者公會等等。西邊外圍有成人紅燈區。', category: '地點', isActive: true },
+    { id: 2, title: '迷霧森林', content: '小紅帽副本：公會奶奶負責保管紅色斗篷，獵人公會訓練出來的學徒，每年都會派一位代表披上「紅斗篷」，跟狼族學徒決鬥一次(切磋性質)', category: '地點', isActive: true },
+    { id: 3, title: '狼族領地', content: '黑牙氏族領地，非請勿擾', category: '地點', isActive: true },
+    { id: 4, title: '大斷崖', content: '靠近地圖北端的懸崖，懸崖山洞裡有寶藏跟龍，附近是矮人堡壘', category: '地點', isActive: true },
+    { id: 5, title: '失序谷', content: '「失序谷」是一個地理名稱，因其內部地形崎嶇、生態系統混亂且不合邏輯而得名。廣義上屬於魔王的勢力範圍，因此也被稱為「魔族區域」。\n「魔王城」坐落在山峰之中。谷中有群聚鬧區也有散落居住的居民。\n氣氛歡樂鬆散，會欺騙、惡作劇。\n有各式各樣的種族，包括媚魔、吸血鬼、骷髏怪等等。\n偶爾會有人被惡作劇，變成其他種族或性別。適合投機份子的去處。', category: '地點', isActive: true },
+    { id: 6, title: '白樺樹之森', content: '白雪公主副本：皇后送了白雪公主一顆「Apple 」，這個「Apple」可以傳遞聲音、拍照，還可以看世界各地的迷因影片，白雪公主每天玩蘋果玩到三更半夜，非常不自律。', category: '地點', isActive: true },
+    { id: 7, title: '永夜沙灘', content: '人魚氏族：有魔法藥劑可以讓人魚上岸，偶爾會偽裝成人類去貿易，但新上岸的人魚對陸地生活較陌生，容易發生尷尬的事，需要老手帶領。人魚除了外表好看之外，多少帶點魚類的特性，例如：海豚可以用高頻率傳遞訊息，鯊魚喜歡吃生魚片。嚴禁有「接吻魚」習性的人魚上岸。大魚吃小魚，人魚也吃魚。', category: '地點', isActive: true },
+    { id: 8, title: '湖畔詩社', content: '永夜湖畔的文藝聚會點，聚集吟遊詩人與旅人，會發佈特殊情報或支線任務。也是個野餐的好地點。', category: '地點', isActive: true },
+    { id: 9, title: '鐘塔荒野', content: '睡美人副本：這個睡美人是歷年來擔任最久的一屆，一堆人吻她都沒反應，但可能會爬起來敷衍冒險者。（隱藏彩蛋：進入睡美人夢境後，會發現她的夢境是通往愛麗絲的夢遊仙境，而她是裡面的紅心皇后，樂不思蜀，不想醒來。）', category: '地點', isActive: true },
+    { id: 10, title: '月湖驛站', content: '鐘塔荒野附近，得到穿越時空的素材，可以搭車回到素材當下的時間（也能「重置」道具狀態）', category: '地點', isActive: true },
+    { id: 11, title: '幻夢市集', content: '只在夜晚出現的流動市集，有神祕商人與奇珍異寶。', category: '地點', isActive: true },
+    { id: 12, title: '霧光花園', content: '夢幻花園，盛開著螢光花，據說能讓人變得誠實，有人會約在這裡告白、求婚、逼問對方是否出軌，也有人會在這裡辦民間調解。', category: '地點', isActive: true },
+    { id: 13, title: '失落拼圖山丘', content: '許多冒險者(不限於異鄉人)會在這裡丟棄失敗的任務線索，據說是能擺脫霉氣。有些人會到這裡尋寶，也許可以從某些道具解鎖其他訊息。', category: '地點', isActive: true },
+    { id: 14, title: '黑森林古道', content: '連接月湖鎮與迷霧森林的隱蔽小徑，據說偶爾會出現會誘人的「糖果屋」。', category: '地點', isActive: true },
+    { id: 15, title: '異鄉人公寓', content: '位於月湖鎮城南住宅區的三層木造建築，外觀略顯陳舊，但結構依然堅固。由異鄉人公會管理，為居住者提供了一份低調的安寧。每週租金35銅。\n一樓：公共空間。公寓的公共生活圍繞著「互助」與「資訊共用」的核心展開，主要體現在一樓的布告欄上。\n二樓與三樓：寢室區。', category: '地點', isActive: true },
+    { id: 18, title: '芬里爾', job: '黑牙氏族首領', appearance: '銀藍色毛髮，金色眼眸，身形高大，具有王者氣派。', personality: '威嚴、果決、深思熟慮，一位高瞻遠矚的改革家與理想主義者。', other: '黑牙氏族現任首領（Alpha），擁有絕對的權威。孤獨的遠見者。他廢除決鬥儀式的決定，絕非一時興起，而是他籌謀已久、甚至可能已為此與族中保守派鬥爭多年的結果。曾是「氏族最強的戰士」。', category: 'NPC', isActive: true },
+    { id: 19, title: '格雷厄姆', job: '黑牙氏族指揮官', appearance: '暗灰色短毛髮，金色眼眸，面容嚴肅，不苟言笑，眼神銳利，「行走的冰山」。', personality: '典型的軍人風格，務實、嚴肅、忠誠不二。思考問題偏向戰略與安全。', other: '黑牙氏族指揮官，芬里爾的得力助手，掌管族內軍事與防衛。他並非天生的完美戰士，而是靠後天加倍的努力與嚴苛的自我要求，才爬到了今天的位置。極度自律、有著強烈的責任感與榮譽感。喜歡鹹食。', category: 'NPC', isActive: true },
+    { id: 20, title: '布萊茲', job: '黑牙氏族副指揮官', appearance: '淡灰色短毛髮，藍色瞳孔。', personality: '平時有點玩世不恭，但知道分寸，在軍中扮演白臉的角色，但以上級的命令為絕對優先。', other: '黑牙氏族副指揮官（斥候）- 平時負責物資調度，熟知族內大小事，特殊時期才會輔佐格雷厄姆，據本人的說法是，因為格雷厄姆覺得他有點煩。', category: 'NPC', isActive: true },
+    { id: 21, title: '烏爾夫', job: '首席藥師兼弓箭手', appearance: '銀白色短毛髮，琥珀色的眼眸，身上常帶有淡淡的草藥清香。', personality: '溫和、善良、博學、體貼、樂於助人，醫術高明，令人安心的暖男。', other: '黑牙氏族首席藥師兼弓箭手，備受族人尊敬和信賴。因幼年時母親體弱多病，立志成為能拯救他人的藥師。對森林中的藥草與植物瞭若指掌。儘管體質並非天生強悍，但他從未缺席過任何一次戰士訓練。擁有神射手箭術、強大的力量與動態視力。能夠拉開比他人還高的黑色長弓。該弓的弓弦由龍筋混合特殊魔法金屬絲線製成，用途是「威懾」與「破甲」，足以射穿龍鱗等級的護甲。芬里爾是學長，格雷厄姆、烏爾夫、布萊茲是同期訓練生，私交不錯。', category: 'NPC', isActive: true },
+    { id: 22, title: '西拉斯', job: '藥師', appearance: '灰白色狼人，身上披著一件深色的樸素長袍，戴著一副看起來像是用晶石打磨成的單片眼鏡。', personality: '表面寡言，內心柔軟。擁有驚人的智慧與洞察力。', other: '氏族最年長的藥師，烏爾夫的老師，德高望重。', category: 'NPC', isActive: true },
+    { id: 23, title: '格瑞塔', job: '公共廚房負責人', appearance: '', personality: '嗓門洪亮、性格爽朗、熱情豪邁，樂於分享食材和經驗。是典型的大家長式人物。喜歡看狼族成員戀愛（有多子多孫的意思）', other: '黑牙氏族公共廚房的負責人。', category: 'NPC', isActive: true },
+    { id: 24, title: '霍爾特', job: '工匠區管理者', appearance: '', personality: '脾氣暴躁、說話直接、不近人情，「口嫌體正直」。', other: '工匠區的管理者，負責氏族所有工具、武器、大型器具的製造與維護。', category: 'NPC', isActive: true },
+    { id: 26, title: '艾娜', job: '育幼區長老', appearance: '', personality: '和藹可親。', other: ' 黑牙氏族育幼區長老，幼崽稱呼她為艾拉拉。格瑞達大嬸的母親。知道很多狼族成員幼崽時期的「黑歷史」。', category: 'NPC', isActive: true },
+    { id: 27, title: '羅賓', job: '獵人公會代表', appearance: ' 人類。獵人公會代表。約 25 歲。身形結實，褐色微亂的短髮，臉上帶有些許雀斑，眼神清澈、堅定。', personality: '聰慧且善於學習，責任感強，正直的善良青年。他真心相信不同種族之間可以和平共存，並願意為此付出努力。是獵人公會中思想最為開明的年輕一代。', other: '人類，月湖鎮獵人公會代表、和平派對狼族事務的指定代表。具備優秀的森林知識、追蹤能力與野外生存技巧。不擅長正面衝突，但在接下和平派代表的責任後，交涉與應對危機的膽識正在快速成長。', category: 'NPC', isActive: true },
+    { id: 28, title: '埃德蒙', job: '獵人公會會長', appearance: ' 人類。獵人公會會長。身形高大但略顯疲憊。整齊的灰黑色頭髮，法令紋讓他看起來比實際年齡更蒼老。穿著得體的深色正裝。', personality: '厭世、沉穩、理性、 外冷內熱。', other: '中年人類。曾是上一代最強的傳奇獵人，但在一次損失慘重的討伐任務後，他選擇退居幕後，成為了公會的管理者。那次任務讓他深刻體會到無謂衝突的代價，因此他內心其實是支持羅賓的和平路線的。和平派幕後的支持者，親自任命羅賓為對狼族事務的代表。會長整天埋首於公文與財務報表，但會在關鍵時刻用權威駁回凱拉過於激進的提案，或為私底下支援羅賓。', category: 'NPC', isActive: true },
+    { id: 29, title: '凱拉', job: '主獵手', appearance: '人類。獵人公會主獵手。約30歲，身材高挑精悍，肌肉線條分明。紅色的短髮總是俐落地束在腦後。', personality: '暴躁、榮譽至上，直來直往、盛氣凌人。', other: '人類，戰鬥教官。凱拉是公會中的鷹派代表，也是最強的主力獵手之一。信奉「力量決定一切」，對於任何非人、尤其是具有掠食者天性的種族抱持懷疑(擔心人類受到威脅)。公開的反對和平派。他尊敬羅賓的勇氣，但不認同他的理念。', category: 'NPC', isActive: true },
+    { id: 30, title: '艾文', job: '情報官', appearance: '人類。獵人公會情報官。年輕，精靈尖耳朵，但輪廓比純血精靈柔和。亞麻色的微卷中長髮，碧綠色眼精。', personality: '隨和、散漫。幽默、內向、八卦(消息最靈通)。', other: '半精靈。情報分析師 & 魔物生態研究員。艾文負責管理公會的任務檔案以及各種魔物材料。他對戰鬥一竅不通，但熟知「魔物學」。他最大的樂趣就是蒐集情報和鎮上的八卦。中立的情報提供者。艾文對政治立場不感興趣。', category: 'NPC', isActive: true },
+    { id: 31, title: '盤根老爹', job: '店主/鍊金術師', appearance: '前冒險家，月湖鎮百草巷中的「盤根老爹的店」店主。非常年長（推測超過300歲，因其年輕時見過據說已絕跡三百年的「陽鱗龍蜥」）。', personality: '脾氣古怪，不善交際，有虛榮心。內在核心：極度念舊，重情重義。閱歷豐富，內心孤獨。', other: '矮人。前冒險家，月湖鎮百草巷中的「盤根老爹的店」店主、鍊金術師、鑑定師。作為一個活了數百年的「活化石」，他那看似炫耀的「故事模式」，其實是在宣洩孤獨。', category: 'NPC', isActive: true },
+    { id: 32, title: '伊拉拉', job: '歷史學者', appearance: '女性。精靈。歷史學者', personality: '性格文靜、有禮貌且自律。', other: '精靈。歷史學者。似乎是公寓裡居住最久的成員。她的家鄉是名為「銀葉谷」的精靈城市，但因不明「變故」而無法回去。她在後院種植植物。', category: 'NPC', isActive: true },
+    { id: 33, title: '波羅', job: '弓弩手/釀酒師', appearance: '紅眼、白長髮，身材精實。', personality: '初期謹慎，內心溫柔熱情，有著驚人的耐心與細緻。喝醉後會異常熱情。', other: '身手矯健，使用並保養複雜的輕型弩箭。釀造後勁強勁的「熊族蜂蜜酒」。', category: 'NPC', isActive: true },
+    { id: 34, title: '里歐', job: '法師學徒', appearance: '穿著整齊的深藍色法師學徒袍。英俊，但表情通常略帶嚴肅。', personality: '秩序善良。講究規則、條理和紀律，有輕微的潔癖和強迫症。人很好，會主動組織茶會等公共事務，關心室友之間的和諧關係。', other: '人類。「奧術學宮」的法師學徒。技能：奧術理論知識、施放基礎的輔助性法術。', category: 'NPC', isActive: true },
+    { id: 35, title: '莎夏', job: '鍊金術士', appearance: '棕色雜亂短髮。鼻樑上架著護目鏡，工作服上常沾有不明污漬。二十出頭，焦糖色大眼睛，充滿活力。', personality: '混亂中立，對未知事物充滿狂熱的好奇心，行事大膽，不畏風險。會忘記生活公約，但在閒暇時很健談、熱情。', other: '人類。鍊金術士。在公寓後面租了一個小房間當工作室。技能：鍊金術天才。能製作出效果奇特、味道也同樣奇特的藥劑與料理。', category: 'NPC', isActive: true },
+    { id: 36, title: '波林', job: '老闆', appearance: '身材微胖，留著兩撇小鬍子的中年男人。', personality: '務實的生意人，為人不算刻薄，對員工有一定程度的保護心。有點八卦。', other: '人類。老闆。', category: 'NPC', isActive: true },
+    { id: 37, title: '米米', job: '侍女兼雜工', appearance: '有著兔耳，紅色眼眸，活潑可愛。', personality: '善良、勤勞、關心家人。', other: '兔耳族，侍女兼雜工。與妹妹莉莉跟母親同住。', category: 'NPC', isActive: true },
+    { id: 38, title: '巴克', job: '廚師', appearance: '身材魁梧，灰綠色皮膚，下顎有兩顆小獠牙。', personality: '沉默寡言，但內心認可勤勞的人。經驗老道，直覺敏銳。', other: '半獸人。廚師。', category: 'NPC', isActive: true },
+    { id: 39, title: '魔王', job: '魔王', appearance: '失序谷魔王。外貌與性別可隨意變換，但無論如何變化，都會維持在一個「好看」的狀態。', personality: '聰明但散漫。混亂邪惡，但偏向樂子人，懶得親手害死誰，更享受戲弄別人帶來的樂趣。其領地的氛圍也因此顯得「歡樂鬆散」。', other: '會根據魔物特性，讓他們各司其職去工作。外貌協會：對「美」有著極高的標準，偏愛所有好看的外表。這一點也體現在他的城堡守則上——只有外貌姣好者才能進入。曾因為想作亂，和引路者有些「曲折的過去」，單方面認為自己跟「引路者」是歡喜冤家(同樣都活太久)。', category: 'NPC', isActive: true }
+  ]);
+
 
   const [inventory, setInventory] = useState<any[]>(() => _s?.inventory || []);
 
   const [consumables, setConsumables] = useState<any[]>(() => _s?.consumables || []);
 
-  const [messages, setMessages] = useState<Message[]>(() => _s?.messages || [
-    { id: 1, role: 'system', text: '*你在一陣微涼的晨風中醒來，意識像是從深不見底的湖底緩緩浮上水面。陽光穿透層層疊疊的奇異葉片，篩落在臉上，形成斑駁的光點。身下是柔軟而潮濕的苔癬，空氣中瀰漫著泥土、腐葉以及某種不知名野花的清甜香氣，一切都陌生得令人心慌。*\n\n*你記得的最後一件事，是在舒適的床上滑著手機，準備迎接又一個平凡的上班日。而現在，你正躺在一片廣闊無垠的原始森林裡，高聳入雲的巨木有著從未見過的扭曲枝幹，周遭的蕨類植物甚至比人還高。*\n\n*在你還在試圖理解現況時，一個清晰、中性且帶著一絲戲謔的聲音，直接在你腦海中響起。*\n\n🌀引路者：「早安，睡美人。或者我該說……迷途的羔羊？感覺你有很多問題想問，別急，我們有的是時間。首先，恭喜你，你還活著。」\n\n*這聲音聽起來不帶惡意，反而像個個看了太多好戲的無聊房東，終於盼來了有趣的新房客。*' },
+  const [messages, setMessages] = useState(() => _s?.messages || [
+    { id: 1, role: 'system', text: '*你在一陣微涼的晨風中醒來，意識像是從深不見底的湖底緩緩浮上水面。陽光穿透層層疊疊的奇異葉片，篩落在臉上，形成斑駁的光點。身下是柔軟而潮濕的苔癬，空氣中瀰漫著泥土、腐葉以及某種不知名野花的清甜香氣，一切都陌生得令人心慌。*\n\n*你記得的最後一件事，是在舒適的床上滑著手機，準備迎接又一個平凡的上班日。而現在，你正躺在一片廣闊無垠的原始森林裡，高聳入雲的巨木有著從未見過的扭曲枝幹，周遭的蕨類植物甚至比人還高。*\n\n*在你還在試圖理解現況時，一個清晰、中性且帶著一絲戲謔的聲音，直接在你腦海中響起。*\n\n🌀引路者：「早安，睡美人。或者我該說……迷途的羔羊？感覺你有很多問題想問，別急，我們有的是時間。首先，恭喜你，你還活著。」\n\n*這聲音聽起來不帶惡意，反而像個看了太多好戲的無聊房東，終於盼來了有趣的新房客。*' },
   ]);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -218,7 +273,28 @@ export default function App() {
   }, [messages]);
 
   // Mock World Map Data
-  const [worldMap, setWorldMap] = useState<WorldMap>(() => _s?.worldMap || INITIAL_WORLD_MAP);
+  const [worldMap, setWorldMap] = useState<WorldMap>({
+    fixed: [
+      { id: 'moon_lake', name: '月湖鎮', type: 'town', x: 0, y: 0, desc: '世界中心，醉醺醺酒館、任務板、情報來源、各類店家。外圍有各種公會據點。包含「異鄉人公寓」。' },
+      { id: 'mist_forest', name: '迷霧森林', type: 'danger', x: 100, y: 50, desc: '小紅帽副本：公會奶奶負責保管紅色斗篷，每年派代表與狼族決鬥。' },
+      { id: 'wolf_clan', name: '狼族領地', type: 'danger', x: 110, y: 70, desc: '黑牙氏族領地，非請勿擾。' },
+      { id: 'great_cliff', name: '大斷崖', type: 'danger', x: 0, y: 140, desc: '懸崖山洞裡有寶藏跟龍，附近是矮人堡壘。' },
+      { id: 'disorder_valley', name: '失序谷', type: 'city', x: -100, y: 100, desc: '魔王城所在。地形崎嶇、生態混亂。氣氛歡樂鬆散，有各種魔族，適合投機份子。' },
+      { id: 'birch_forest', name: '白樺樹之森', type: 'danger', x: 0, y: 100, desc: '白雪公主副本：皇后送了「Apple」手機，白雪公主每天玩到三更半夜。' },
+      { id: 'evernight_beach', name: '永夜沙灘', type: 'town', x: -100, y: 0, desc: '人魚氏族：有魔法藥劑可上岸貿易。嚴禁接吻魚上岸。' },
+      { id: 'lakeside_poetry', name: '湖畔詩社', type: 'poi', x: -70, y: 10, desc: '永夜湖畔的文藝聚會點，發佈特殊情報或支線任務。' },
+      { id: 'clock_tower', name: '鐘塔荒野', type: 'danger', x: 0, y: -100, desc: '睡美人副本：睡美人夢境通往愛麗絲夢遊仙境，她是紅心皇后，不想醒來。' },
+      { id: 'moon_station', name: '月湖驛站', type: 'poi', x: 0, y: -60, desc: '得到穿越時空的素材，可以搭車回到素材當下的時間。' },
+      { id: 'illusion_market', name: '幻夢市集', type: 'town', x: 50, y: -30, desc: '只在夜晚出現的流動市集，有神祕商人與奇珍異寶。' },
+      { id: 'mist_light_garden', name: '霧光花園', type: 'poi', x: -70, y: 50, desc: '盛開螢光花，能讓人變得誠實，適合告白或民間調解。' },
+      { id: 'lost_puzzle_hill', name: '失落拼圖山丘', type: 'poi', x: -70, y: 120, desc: '冒險者丟棄失敗任務線索的地方，可尋寶解鎖訊息。' },
+      { id: 'black_forest_road', name: '黑森林古道', type: 'poi', x: 80, y: 30, desc: '連接月湖鎮與迷霧森林的隱蔽小徑，偶爾出現「糖果屋」。' }
+    ],
+    dynamic: [
+      { id: 'd1', name: '破舊的木屋', location: '迷霧森林邊緣', desc: '門半掩著，裡面透出微弱的火光與嘶吼聲。', isPinned: true },
+      { id: 'd2', name: '冒泡的毒沼澤', location: '前往王都的路上', desc: '散發著惡臭的泥潭，似乎隱藏著某種生物。', isPinned: false }
+    ]
+  });
 
   const [mapOrigin, setMapOrigin] = useState<string | null>(null);
   const [mapDestination, setMapDestination] = useState<string | null>(null);

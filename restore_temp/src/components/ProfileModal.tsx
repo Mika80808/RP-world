@@ -1,7 +1,17 @@
 import React from 'react';
 import { User, Save } from 'lucide-react';
 
-import { Profile } from '../types';
+export interface Profile {
+  name: string;
+  job: string;
+  appearance: string;
+  personality: string;
+  other: string;
+  hp: number;
+  mp: number;
+  gold: number;
+  status?: string;
+}
 
 interface ProfileModalProps {
   isOpen: boolean;

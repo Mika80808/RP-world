@@ -18,9 +18,6 @@
 
 ## 🔴 高優先
 
-- [x] **型別與常數提取重構**
-  2026-03-14 [Gemini]: 建立 `src/types.ts` 與 `src/constants.ts`，統一 `Profile`, `Npc`, `Quest`, `LorebookEntry`, `SystemPrompt`, `TimeState`, `WorldMap`, `Message`, `DiaryEntry` 等核心型別與靜態資料。重構 `App.tsx` 與所有 Modal 組件以引用統一的型別與常數，移除重複定義，提升維護性。
-
 - [x] **任務系統規格升級**
 
   **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。

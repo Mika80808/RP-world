@@ -5,18 +5,7 @@
 
 ---
 
-## [2026-03-14] v9（當前版本）
-
-### 型別與常數提取重構
-為了提升程式碼的可維護性與一致性，進行了大規模的型別與常數提取重構。
-- **統一型別定義**：建立 `src/types.ts`，將散落在各組件中的 `Profile`, `Npc`, `Quest`, `LorebookEntry`, `SystemPrompt`, `TimeState`, `WorldMap`, `Message`, `DiaryEntry` 等核心型別統一管理。
-- **靜態資料提取**：建立 `src/constants.ts`，將 `MONTHS_DATA`, `INITIAL_SYSTEM_PROMPT`, `INITIAL_LOREBOOK_ENTRIES`, `INITIAL_WORLD_MAP`, `TOKEN_OPTIONS` 等靜態資料從 `App.tsx` 移出。
-- **組件重構**：更新 `App.tsx` 及所有 Modal 組件（`ProfileModal`, `NpcModal`, `QuestModal`, `LorebookModal`, `SystemPromptModal`, `MapModal`, `DiaryModal`, `SettingsModal`），移除本地重複的型別與常數定義，改為引用統一的檔案。
-- **狀態初始化優化**：更新 `App.tsx` 中的狀態初始值，確保使用正確的型別與預設常數。
-
----
-
-## [2026-03-13] v8
+## [2026-03-13] v8（當前版本）
 
 ### NPC 出沒系統 + 兩階段注入
 讓 NPC 根據劇情自然累積出沒地點，前端依地點篩選候選名單，AI 決定誰真正出場，避免 NPC 無限膨脹也保留生活感。

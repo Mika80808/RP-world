@@ -1,7 +1,22 @@
 import React from 'react';
 import { Users, BookPlus, Pin, Heart, User, Book, Trash2, Lock } from 'lucide-react';
 
-import { Npc } from '../types';
+export interface Npc {
+  id: number;
+  name: string;
+  job: string;
+  affection: number;
+  affectionLabel: string;
+  appearance: string;
+  personality: string;
+  other?: string;
+  isPinned?: boolean;
+  memories?: string[];
+  relationship?: string;
+  lastSeenLocation?: string;
+  lastSeenDate?: string;
+  thoughts?: { text: string; createdAt: string }[];
+}
 
 interface NpcModalProps {
   selectedNpc: Npc | null;
