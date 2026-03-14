@@ -53,6 +53,23 @@ export const MapModal: React.FC<MapModalProps> = ({
   const isDragging = useRef(false);
   const lastPan = useRef({ x: 0, y: 0 });
 
+  // ── Drag（必須在 early return 之前，否則違反 Rules of Hooks） ────────────────
+  const handlePointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if ((e.target as Element).closest('[data-node]')) return;
+    isDragging.current = true;
+    lastPan.current = { x: e.clientX, y: e.clientY };
+    (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if (!isDragging.current) return;
+    setPanX(p => Math.max(-350, Math.min(350, p + e.clientX - lastPan.current.x)));
+    setPanY(p => Math.max(-350, Math.min(350, p + e.clientY - lastPan.current.y)));
+    lastPan.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handlePointerUp = useCallback(() => { isDragging.current = false; }, []);
+
   if (!isOpen) return null;
 
   // ── Data ────────────────────────────────────────────────────────────────────
@@ -73,23 +90,6 @@ export const MapModal: React.FC<MapModalProps> = ({
   const filteredNodes = searchQuery.trim()
     ? mapNodes.filter(e => e.title.includes(searchQuery) || (e.content || '').includes(searchQuery))
     : mapNodes;
-
-  // ── Drag ────────────────────────────────────────────────────────────────────
-  const handlePointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    if ((e.target as Element).closest('[data-node]')) return;
-    isDragging.current = true;
-    lastPan.current = { x: e.clientX, y: e.clientY };
-    (e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
-  }, []);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
-    if (!isDragging.current) return;
-    setPanX(p => Math.max(-350, Math.min(350, p + e.clientX - lastPan.current.x)));
-    setPanY(p => Math.max(-350, Math.min(350, p + e.clientY - lastPan.current.y)));
-    lastPan.current = { x: e.clientX, y: e.clientY };
-  }, []);
-
-  const handlePointerUp = useCallback(() => { isDragging.current = false; }, []);
 
   // ── Node click ───────────────────────────────────────────────────────────────
   const handleNodeClick = (title: string, e: React.MouseEvent) => {
@@ -280,20 +280,28 @@ export const MapModal: React.FC<MapModalProps> = ({
                     {/* Discovered: 虛線圓圈 */}
                     {!isKnown && (
                       <>
+                        {/* 選取時額外顯示外圈光暈 */}
+                        {isSelected && (
+                          <circle cx={cx} cy={cy} r={16}
+                            fill="none" stroke="#cc4422" strokeWidth="1" opacity={0.45}
+                          />
+                        )}
                         <circle
                           cx={cx} cy={cy} r={8}
-                          fill="#0a1628"
-                          stroke="#5a8fc9"
-                          strokeWidth="1.2"
+                          fill={isSelected ? 'rgba(204,68,34,0.15)' : '#0a1628'}
+                          stroke={isSelected ? '#cc4422' : '#5a8fc9'}
+                          strokeWidth={isSelected ? '1.5' : '1.2'}
                           strokeDasharray="3 2"
-                          opacity={0.38}
+                          opacity={isSelected ? 0.8 : 0.38}
                         />
                         <text x={cx} y={cy + 4.5} textAnchor="middle" fontSize="9"
-                          fill="#5a8fc9" opacity={0.5} style={{ pointerEvents: 'none' }}>?</text>
+                          fill={isSelected ? '#ff8866' : '#5a8fc9'}
+                          opacity={isSelected ? 0.9 : 0.5}
+                          style={{ pointerEvents: 'none' }}>?</text>
                         <text
                           x={cx} y={cy + 20}
                           textAnchor="middle" fontSize="10"
-                          fill="#2a4a7f"
+                          fill={isSelected ? '#ff8866' : '#2a4a7f'}
                           style={{ pointerEvents: 'none', fontFamily: 'Georgia, serif' }}
                         >???</text>
                       </>
@@ -609,7 +617,7 @@ export const MapModal: React.FC<MapModalProps> = ({
                       </button>
                     ))
                   }
-                  {mapNodes.filter(e => e.mapStatus !== 'known' && e.title !== currentLocation).length > 0 && (
+                  {(searchQuery.trim() ? filteredNodes : mapNodes).filter(e => e.mapStatus !== 'known' && e.title !== currentLocation).length > 0 && (
                     <>
                       <div
                         className="flex items-center gap-1.5 py-1"
@@ -618,7 +626,7 @@ export const MapModal: React.FC<MapModalProps> = ({
                         <span style={{ color: '#2a4a7f', fontSize: 9 }}>未踏足</span>
                         <div className="flex-1 h-px" style={{ background: '#1a2a4a' }} />
                       </div>
-                      {mapNodes
+                      {(searchQuery.trim() ? filteredNodes : mapNodes)
                         .filter(e => e.mapStatus !== 'known' && e.title !== currentLocation)
                         .map(loc => (
                           <button
