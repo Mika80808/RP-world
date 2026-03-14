@@ -32,56 +32,62 @@
 
 - [ ] **任務系統規格升級**
 
-  **功能意義**：AI 可透過 COMMANDS 動態新增、完成任務，玩家在任務日誌中追蹤進度，期限到了自動失敗。
+  **功能意義**：實作「目標達成 → 回報領賞」的兩階段任務流程。AI 判斷目標達成時輸出隱藏指令，玩家回報後才正式結案並發放獎勵。
 
-  **資料結構**（新增 `quests` state，陣列，存入 localStorage 存檔）：
-  ```
+  **資料結構**（`quests` state，在現有基礎上新增 `isGoalMet`）：
+```typescript
   {
-    id: number,           // 自動遞增
-    title: string,        // 任務名稱（唯一識別，Prompt 注入與 QUEST_COMPLETE 比對依據）
-    giver: string,        // 委託人 NPC 名稱
-    description: string,  // 目標描述
-    reward: {
-      gold?: number,
-      items?: string[]
-    },
-    deadline?: number,    // 遊戲內天數，null 表示無期限
+    id: string,
+    title: string,
+    giver: string,
+    description: string,
+    reward: { gold?: number, items?: string[] },
+    deadline?: number,
     status: 'active' | 'completed' | 'failed',
-    createdAt: string,    // 遊戲內日期 M/D
+    isGoalMet: boolean,          // 新增：目標是否已達成（對應勾選框狀態）
+    createdAt: string,           // 遊戲內日期 M/D
+    createdAtTotalDays: number,  // 計算期限用
     completedAt?: string
   }
-  ```
+```
 
   **COMMANDS 新增 / 修正指令**（於 `parseAndExecuteCommands` 解析）：
   - `QUEST_ADD:任務名:委託人:目標描述:獎勵金幣:獎勵道具:期限天數`
-    - 建立新任務，status='active'，自動開啟 QuestModal
+    - 建立新任務，`status='active'`，`isGoalMet=false`，自動開啟 QuestModal
     - Toast：「📋 新任務：XX」
-    - 獎勵道具可為空，期限天數可為空（無期限）
+  - `QUEST_GOAL_MET:任務名`（新增，放在 COMMANDS 區塊，取代舊的內文標記方式）
+    - 將對應任務 `isGoalMet` 設為 `true`
+    - 從對話顯示文字中不做任何輸出（純靜默更新）
+    - Toast：「🎯 任務目標達成：XX（請向委託人回報）」
   - `QUEST_COMPLETE:任務名`
-    - 用任務名稱比對找到對應任務，status 改為 'completed'，目標描述前勾選框打勾
+    - 條件：玩家向委託人回報後，AI 判斷確實完成
+    - 將對應任務 `status` 改為 `'completed'`
     - 自動發放獎勵：gold 加入 `profile.gold`，items 加入 `inventory`
     - Toast：「✅ 任務完成：XX，獲得 XX 銅」
 
   **期限自動失敗**：
-  - 每次 `TIME_ADVANCE` 指令執行後，前端掃描所有 status='active' 的任務
-  - 計算遊戲累計天數是否超過 `deadline`，超過則自動標記 status='failed'
+  - 每次 `TIME_ADVANCE` 指令執行後，前端掃描所有 `status='active'` 的任務
+  - 計算 `createdAtTotalDays + deadline` 是否小於當前遊戲總天數
+  - 超過則自動標記 `status='failed'`
   - Toast：「❌ 任務失敗：XX」
 
   **Prompt 注入**（於 `buildPrompt`）：
-  - 注入所有 status='active' 的任務清單：
-    ```
+  - 掃描所有 `status='active'` 的任務，依 `isGoalMet` 狀態輸出不同格式：
+```
     [進行中任務]
     尋找失蹤的藥草（委託：烏爾夫，剩 3 天）
-    送信給獵人公會（委託：芬里爾，無期限）
-    ```
+    送信給獵人公會（委託：芬里爾，目標已達成，待玩家回報）
+```
   - COMMAND FORMAT 說明補充：
     - `QUEST_ADD`：NPC 委託玩家任務、或布告欄出現可接取的任務時輸出
-    - `QUEST_COMPLETE`：玩家向委託人回報、AI 判斷任務確實達成時輸出，使用與建立時完全相同的任務名稱
+    - `QUEST_GOAL_MET`：AI 判斷玩家已完成任務目標（但玩家尚未回報）時輸出，放在 COMMANDS 區塊
+    - `QUEST_COMPLETE`：玩家向委託人回報、AI 確認結案時輸出，必須使用與 QUEST_ADD 完全相同的任務名稱
 
   **QuestModal UI**（`src/components/QuestModal.tsx`）：
-  - 頂部三個狀態計數：進行中 / 已完成 / 失敗
-  - 每張任務卡片顯示：任務名、委託人、目標描述（前方有勾選框，由前端控制）、獎勵（金幣＋道具）、接受日期
-  - 進行中：綠色邊框，右上角顯示剩餘天數或「無期限」
+  - 頂部狀態計數：進行中 / 待回報 / 已完成 / 失敗（四種）
+  - 每張任務卡片顯示：任務名、委託人、目標描述（前方勾選框由前端依 `isGoalMet` 控制）、獎勵、接受日期
+  - 進行中（`isGoalMet=false`）：綠色邊框，右上角顯示剩餘天數或「無期限」
+  - 待回報（`isGoalMet=true`）：琥珀色邊框 + 右上角「待回報」標籤，勾選框變為 `☑`
   - 已完成：灰化＋刪除線＋綠色「✓ 完成」標籤＋完成日期
   - 失敗：灰化＋刪除線＋紅色「✗ 失敗」標籤＋「期限超過」
 
